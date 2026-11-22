@@ -1,0 +1,58 @@
+[
+ {
+  "query": "QA our site after yesterday's deploy",
+  "should_trigger": true
+ },
+ {
+  "query": "перевір сайт після релізу, чи все працює",
+  "should_trigger": true
+ },
+ {
+  "query": "Check if GA4 events fire on the contact form",
+  "should_trigger": true
+ },
+ {
+  "query": "Find broken links and redirects after the migration",
+  "should_trigger": true
+ },
+ {
+  "query": "Write Playwright tests I can run after each deploy",
+  "should_trigger": true
+ },
+ {
+  "query": "Is our site OK on mobile and Safari after the redesign?",
+  "should_trigger": true
+ },
+ {
+  "query": "Протестуй форми й аналітику на сайті",
+  "should_trigger": true
+ },
+ {
+  "query": "Smoke-test staging before launch",
+  "should_trigger": true
+ },
+ {
+  "query": "Why is our conversion rate low and what should we change in the offer?",
+  "should_trigger": false
+ },
+ {
+  "query": "Write unit tests for this Python function",
+  "should_trigger": false
+ },
+ {
+  "query": "Fix the CSS bug: the button overlaps the footer",
+  "should_trigger": false
+ },
+ {
+  "query": "What does WCAG stand for?",
+  "should_trigger": false
+ },
+ {
+  "query": "Write a blog post about QA best practices",
+  "should_trigger": false
+ },
+ {
+  "query": "Audit our product strategy through JTBD and growth loops",
+  "should_trigger": false
+ }
+]

@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QA audit demo: Harbourline Cargo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sofia+Sans+Condensed:wght@600;800&family=Sofia+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE work: a QA report read by a site owner and a developer, dense and calm
+   IDEA an annual-report spread: the release verdict as headline, one vermilion mass marks what is broken
+   PICTURE checks passed vs failed by area as stacked bars; then area radar, user-flow route, impact/effort matrix
+   COLOUR white / black ink, vermilion #ff4a1c for failures and the top 3 fixes, amber for warnings; night on #120d0b
+   TYPE Sofia Sans Condensed 800 for titles and figures + Sofia Sans for text (both Cyrillic)
+   LAYOUT laptop: title + 4 figures across, area bars full width; then two-column bands. phone: everything stacks, tables become cards */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#120d0b);--ink:light-dark(#111111,#f4efe9);--mute:light-dark(#5d5a57,#b3aca5);--line:light-dark(#e6e2de,#2e2622);--soft:light-dark(#f6f3f0,#1c1512);--red:light-dark(#ff4a1c,#ff6a43);--amber:light-dark(#d98a00,#f2b23a);--ok:light-dark(#111111,#f4efe9)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Sofia Sans",system-ui,sans-serif;overflow-x:clip}
+.band{padding-block:clamp(28px,4vw,56px);padding-left:max(5vw,16px);padding-right:max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+h1,h2,.num{font-family:"Sofia Sans Condensed","Arial Narrow",sans-serif;font-weight:800;letter-spacing:-.02em;line-height:1.05;margin:0}
+h1{font-size:clamp(32px,5vw,52px);text-wrap:balance;max-width:20ch}
+h2{font-size:clamp(26px,3vw,34px);text-wrap:balance;margin-bottom:8px}
+h3{font-size:17px;margin:0 0 4px}
+p{margin:0 0 12px;max-width:68ch}
+.lead{font-size:17px;color:var(--mute);margin-top:14px}
+.demo{display:inline-block;font-size:13px;color:var(--mute);border:1px solid var(--line);border-radius:99px;padding:2px 10px;margin-bottom:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(10em,1fr));gap:0;margin-top:28px;border-top:2px solid var(--ink)}
+.kpi{padding:14px 16px 6px 0}
+.kpi .num{font-size:clamp(34px,4.5vw,48px)}
+.kpi small{display:block;font-size:13px;color:var(--mute)}
+.red{color:var(--red)}
+.nav{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);display:flex;gap:4px;overflow-x:auto;padding:6px max(5vw,16px)}
+.nav a{flex:none;color:var(--ink);text-decoration:none;font-size:14px;padding:10px 12px;border-radius:8px}
+.nav a:hover,.nav a:focus-visible{background:var(--soft);outline:none}
+.funnel{margin-top:26px}
+.step{display:grid;grid-template-columns:minmax(0,13em) minmax(0,1fr) 5.5em;gap:12px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.step .lab{font-size:15px}
+.step .lab small{display:block;color:var(--mute);font-size:13px;overflow-wrap:anywhere}
+.track{height:30px;background:var(--soft);border-radius:3px;position:relative}
+.bar{height:100%;background:var(--ink);border-radius:3px;transform-origin:left;animation:grow .9s ease-out both}
+.step.hot .bar{background:var(--red)}
+.step.hot .lab{font-weight:700}
+.pct{font-family:"Sofia Sans Condensed",sans-serif;font-weight:800;font-size:24px;text-align:right;white-space:nowrap}
+.note{position:absolute;left:calc(var(--w) + 10px);top:50%;transform:translateY(-50%);font-size:13px;color:var(--red);font-weight:700;white-space:nowrap}
+@keyframes grow{from{transform:scaleX(0)}}
+@media(prefers-reduced-motion:reduce){.bar{animation:none}}
+.alt{background:var(--soft)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(20px,4vw,48px);align-items:start;margin-top:18px}
+.fig{position:relative;min-height:380px}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+svg text{paint-order:stroke;stroke:var(--bg);stroke-width:4px;font-family:"Sofia Sans",sans-serif;font-size:13px}
+.alt svg text{stroke:var(--soft)}
+.ico{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.group{margin-bottom:16px}
+.group h3{font-size:14px;color:var(--mute);font-weight:600;border-bottom:1px solid var(--line);padding-bottom:4px;margin-bottom:6px}
+.lens{display:grid;grid-template-columns:22px minmax(0,9em) minmax(0,1fr) 2.4em;gap:10px;align-items:center;padding:5px 0;font-size:15px}
+.meter{height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+.meter i{display:block;height:100%;border-radius:99px;background:var(--ink)}
+.meter i.low{background:var(--red)}.meter i.mid{background:var(--amber)}
+.lens b{font-family:"Sofia Sans Condensed",sans-serif;font-size:18px;text-align:right}
+.route{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));margin-top:26px;position:relative}
+.route::before{content:"";position:absolute;left:6%;right:6%;top:21px;height:4px;background:var(--line)}
+.stop{position:relative;text-align:center;padding:0 6px}
+.dot{width:46px;height:46px;border-radius:50%;margin:0 auto 10px;display:grid;place-items:center;border:4px solid var(--bg);background:var(--ink);color:var(--bg);font-weight:800;position:relative}
+.alt .dot{border-color:var(--soft)}
+.stop.warn .dot{background:var(--amber);color:#111}
+.stop.bad .dot{background:var(--red);color:#fff}
+.stop h3{font-size:15px}
+.stop p{font-size:13px;color:var(--mute);margin:0}
+.who{font-size:13px;color:var(--mute);display:block;margin-bottom:4px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:14px;color:var(--mute);margin-top:18px}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.chip{font:inherit;font-size:14px;min-height:44px;padding:0 16px;border-radius:99px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th{text-align:left;font-size:13px;color:var(--mute);font-weight:600;border-bottom:2px solid var(--ink);padding:8px 8px 6px}
+td{border-bottom:1px solid var(--line);padding:10px 8px;vertical-align:top}
+td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap}
+.type{font-size:13px;padding:2px 8px;border-radius:4px;white-space:nowrap;border:1px solid var(--ink)}
+.type.ex{border-color:var(--red);color:var(--red)}
+.ice{display:grid;grid-template-columns:3em minmax(60px,1fr);gap:8px;align-items:center}
+.ice .meter i{background:var(--ink)}
+tr.top .ice .meter i{background:var(--red)}
+tr.top td:first-child{color:var(--red);font-weight:800}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:20px}
+.card{border-top:4px solid var(--red);background:var(--bg);padding:18px 18px 8px}
+.card .num{font-size:40px;color:var(--red)}
+.card dl{margin:10px 0 0;font-size:15px}
+.card dt{font-size:13px;color:var(--mute)}
+.card dd{margin:0 0 10px}
+.src{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;font-size:15px;margin-top:12px}
+.src span:nth-child(even){white-space:nowrap;font-size:13px;font-weight:700}
+.st-ok{color:var(--ink)}.st-demo{color:var(--amber)}.st-no{color:var(--red)}
+.conf{margin-top:18px}
+.conf .meter{height:12px}
+details{margin-top:20px;border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:center}
+footer{font-size:13px;color:var(--mute)}
+@media(max-width:900px){.two{grid-template-columns:minmax(0,1fr)}.cards{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:1000px){.route{grid-template-columns:minmax(0,1fr)}.route::before{left:21px;right:auto;top:8px;bottom:8px;width:4px;height:auto}.stop{display:grid;grid-template-columns:46px minmax(0,1fr);gap:14px;text-align:left;padding:0 0 14px}.dot{margin:0}}
+.stop h3,.stop p{overflow-wrap:break-word}
+@media(max-width:600px){.step{grid-template-columns:minmax(0,1fr) 4.5em}.step .track{grid-column:1/-1;grid-row:2}.note{display:none}table{font-size:14px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-bottom:1px solid var(--line)}.stack td{display:flex;justify-content:space-between;gap:12px;border:0;padding:3px 0}.stack td::before{content:attr(data-l);color:var(--mute);font-size:13px}.ice{width:9em}}
+.seg{display:grid;grid-template-columns:repeat(15,minmax(0,1fr));gap:4px;margin-top:26px}
+.seg i{height:56px;border-radius:3px;background:var(--ink)}
+.seg i.p{background:var(--amber)}
+.seg i.n{background:transparent;border:2px solid var(--red)}
+.checks{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 40px;margin-top:18px}
+.chk{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:15px}
+.chk small{display:block;color:var(--mute);font-size:13px}
+.mk{width:20px;height:20px;border-radius:50%;margin-top:2px;background:var(--ink)}
+.mk.p{background:var(--amber)}.mk.n{background:transparent;border:2px solid var(--red)}
+.st-pend{color:var(--amber)}
+@media(max-width:700px){.checks{grid-template-columns:minmax(0,1fr)}.seg i{height:40px}}
+.plan{margin-top:20px;border-top:2px solid var(--ink)}
+.plan details{margin:0;border-top:0;border-bottom:1px solid var(--line);padding:0}
+.plan summary{display:grid;grid-template-columns:2.4em minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;list-style:none}
+.plan summary::-webkit-details-marker{display:none}
+.plan summary .num{font-size:26px}
+.plan summary .ttl{font-weight:700}
+.plan summary .ttl small{display:flex;flex-wrap:wrap;gap:6px 12px;font-weight:400;color:var(--mute);font-size:13px;margin-top:2px}
+.plan summary .arr{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;transition:transform .2s}
+.plan details[open] .arr{transform:rotate(180deg)}
+.plan .top .num{color:var(--red)}
+.pbody{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:8px 36px;padding:0 0 18px 3.4em}
+.pbody h4{font-size:13px;color:var(--mute);font-weight:600;margin:10px 0 4px}
+.pbody p,.pbody li{font-size:15px}
+.pbody ol{margin:0;padding-left:1.2em}
+.pbody li{margin-bottom:4px}
+.facts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:15px;margin-top:10px}
+.facts dt{color:var(--mute);font-size:13px;padding-top:2px}
+.facts dd{margin:0}
+.tools{display:flex;justify-content:flex-end;margin-top:-6px}
+@media(prefers-reduced-motion:reduce){.plan summary .arr{transition:none}}
+@media(max-width:700px){.pbody{grid-template-columns:minmax(0,1fr);padding-left:0}}
+.t{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:help;text-decoration:underline dotted color-mix(in srgb,var(--ink) 55%,transparent);text-underline-offset:3px}
+.t:focus-visible{outline:2px solid var(--red);outline-offset:2px;border-radius:2px}
+#tip{position:fixed;z-index:20;max-width:min(320px,calc(100vw - 32px));background:var(--ink);color:var(--bg);font-size:14px;line-height:1.45;padding:10px 12px;border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.18);display:none}
+#tip b{display:block;margin-bottom:2px}
+.gloss{display:grid;grid-template-columns:minmax(0,12em) minmax(0,1fr);gap:6px 20px;font-size:15px;margin-top:12px}
+.gloss dt{font-weight:700}
+.gloss dd{margin:0;color:var(--mute)}
+@media(max-width:600px){.gloss{grid-template-columns:minmax(0,1fr)}.gloss dd{margin-bottom:8px}}
+.stage{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}
+.st-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;margin-bottom:10px}
+.st{font-size:14px;text-align:center;padding:8px 4px;border-radius:3px;background:var(--soft);color:var(--mute)}
+.st.past{background:color-mix(in srgb,var(--ink) 14%,var(--bg));color:var(--ink)}
+.st.cur{background:var(--ink);color:var(--bg);font-weight:700}
+.stage p{font-size:15px;margin:0}
+.ev{display:inline-block;font-size:12px;line-height:1.3;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--mute);white-space:nowrap;vertical-align:1px}
+.ev.hyp{border-style:dashed}
+.answers{display:grid;grid-template-columns:minmax(0,10em) minmax(0,1fr);gap:4px 16px;font-size:15px;margin:6px 0 0}
+.answers dt{color:var(--mute);font-size:14px}
+.answers dd{margin:0}
+.answers dd.skip{color:var(--amber)}
+.pbody ul{margin:0;padding-left:1.2em}
+@media(max-width:600px){.st{font-size:13px;padding:6px 2px}.answers{grid-template-columns:minmax(0,1fr)}.answers dd{margin-bottom:6px}}
+.cv{display:block;min-width:0}
+@media(max-width:600px){.stack td{align-items:flex-start}.stack td .cv{text-align:right}.stack td:nth-child(2) .cv{text-align:left;flex:1}.stack td::before{flex:none}.ev{margin-top:4px}}
+.icef{display:none;font-weight:400;color:var(--mute);font-size:13px}
+@media(max-width:600px){.stack td:nth-child(5),.stack td:nth-child(6),.stack td:nth-child(7){display:none}.icef{display:inline}.ice{width:auto;grid-template-columns:auto minmax(70px,8em)}.ice b{white-space:nowrap}}
+.step.nd .track{background:repeating-linear-gradient(135deg,var(--soft) 0 8px,transparent 8px 14px);border:1px dashed var(--line);display:flex;align-items:center;padding-left:10px}
+.ndl{font-size:13px;color:var(--mute)}
+.step.nd .pct{color:var(--mute)}
+.step.nd .note{position:static;transform:none;margin-left:14px}
+.demo{border-radius:12px}
+/* qa-audit additions */
+.route{grid-template-columns:repeat(var(--n,8),minmax(0,1fr))}
+@media(max-width:1000px){.route{grid-template-columns:minmax(0,1fr)}}
+.stop p{overflow-wrap:anywhere}
+.area{display:grid;grid-template-columns:minmax(0,15em) minmax(0,1fr) 4.5em;gap:12px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.area .lab{font-size:15px;display:flex;gap:8px;align-items:flex-start}
+.area .lab small{display:block;color:var(--mute);font-size:13px;overflow-wrap:anywhere}
+.area .track{display:flex;gap:2px;background:transparent}
+.area .track i{display:block;height:100%;border-radius:3px;transform-origin:left;animation:grow .9s ease-out both}
+.area .track i.ps{background:var(--ink)}.area .track i.wr{background:var(--amber)}.area .track i.fl{background:var(--red)}
+.area.nd .track{background:repeating-linear-gradient(135deg,var(--soft) 0 8px,transparent 8px 14px);border:1px dashed var(--line);align-items:center;padding-left:10px}
+.area.nd .pct{color:var(--mute)}
+.area .pct.red{color:var(--red)}
+@media(prefers-reduced-motion:reduce){.area .track i{animation:none}}
+@media(max-width:600px){.area{grid-template-columns:minmax(0,1fr) 4.5em}.area .track{grid-column:1/-1;grid-row:2}}
+.lgd{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--mute);margin-top:12px}
+.lgd span::before{content:"";display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:6px;vertical-align:0;background:var(--c)}
+.lgd span.h::before{background:repeating-linear-gradient(135deg,var(--line) 0 3px,transparent 3px 6px);border:1px dashed var(--mute)}
+.lens .meter.nd{background:repeating-linear-gradient(135deg,var(--line) 0 4px,transparent 4px 8px)}
+.sev{font-size:13px;padding:2px 8px;border-radius:4px;white-space:nowrap;border:1px solid var(--line);color:var(--mute)}
+.sev.blocker,.sev.critical{background:var(--red);border-color:var(--red);color:#fff}
+.sev.major{border-color:var(--ink);color:var(--ink)}
+.type.gap{border-color:var(--red);color:var(--red)}
+.evid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:6px}
+.evid a{display:block;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--soft)}
+.evid img{display:block;width:100%;height:110px;object-fit:cover;object-position:top}
+.evid figcaption{font-size:12px;color:var(--mute);padding:4px 6px}
+.logs{margin:6px 0 0;padding:0;list-style:none}
+.logs li{font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft);border-left:3px solid var(--line);padding:6px 8px;margin-bottom:6px;overflow-wrap:anywhere;white-space:pre-wrap}
+.logs li b{font-family:"Sofia Sans",sans-serif;font-size:12px;color:var(--mute);margin-right:6px}
+.seg i.x{background:repeating-linear-gradient(135deg,var(--line) 0 6px,transparent 6px 12px);border:1px dashed var(--mute)}
+.mk.x{background:repeating-linear-gradient(135deg,var(--line) 0 4px,transparent 4px 8px);border:1px dashed var(--mute)}
+pre.cmd{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--ink);color:var(--bg);padding:12px 14px;border-radius:6px;overflow-x:auto;margin:14px 0 0;white-space:pre}
+.tst{font-size:13px;font-weight:700;white-space:nowrap}
+.tst.fail{color:var(--red)}.tst.new{color:var(--amber)}
+code{font:13px ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}
+.target{font-size:14px;color:var(--mute);margin-top:6px}
+.vd .st.cur.bad{background:var(--red);color:#fff}
+.vd .st.cur.warn{background:var(--amber);color:#111}
+.vd .st-row{grid-template-columns:repeat(4,minmax(0,1fr))}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-flows" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h7a3 3 0 0 1 0 6h-4a3 3 0 0 0 0 6h7"/></symbol>
+<symbol id="i-forms" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></symbol>
+<symbol id="i-links" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+<symbol id="i-errors" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></symbol>
+<symbol id="i-mobile" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></symbol>
+<symbol id="i-browsers" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M6 6.5h.01M8.5 6.5h.01"/></symbol>
+<symbol id="i-a11y" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.5"/><path d="M5 8l7 1.5L19 8M12 9.5V14l-3 6M12 14l3 6"/></symbol>
+<symbol id="i-perf" viewBox="0 0 24 24"><path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/><path d="M4 20h16"/></symbol>
+<symbol id="i-analytics" viewBox="0 0 24 24"><path d="M4 20h16M7 16v-4M12 16V8M17 16v-7"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><path d="M4 18l4-11 4 11M5.5 14h5M14 8h6M17 6v2M15 8c0 4 2 7 5 8M19 8c0 3-2 6-5 8"/></symbol>
+<symbol id="i-deploy" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></symbol>
+</svg>
+
+<header class="band"><div class="wrap">
+<span class="demo" data-t="label"></span>
+<h1 data-t="headline"></h1>
+<p class="target" id="target"></p>
+<p class="lead" data-t="lead"></p>
+<div class="kpis" id="kpis"></div>
+<div class="funnel" id="areaBars" data-i18n-aria="aAreas" aria-label=""></div>
+<div class="lgd"><span style="--c:var(--ink)" data-i18n="lgPass"></span><span style="--c:var(--amber)" data-i18n="lgWarn2"></span><span style="--c:var(--red)" data-i18n="lgFail"></span><span class="h" data-i18n="lgNc"></span></div>
+<p class="lead" style="font-size:14px" data-t="areasNote"></p>
+<div class="stage vd" id="verdict" data-i18n-aria="aVerdict" aria-label=""></div>
+</div></header>
+
+<nav class="nav" data-i18n-aria="aNav" aria-label="">
+<a href="#areas" data-i18n="navAreas"></a><a href="#flows" data-i18n="navFlows"></a><a href="#matrix" data-i18n="navMatrix"></a><a href="#bugs" data-i18n="navBugs"></a><a href="#next" data-i18n="navNext"></a><a href="#plan" data-i18n="navPlan"></a><a href="#checklist" data-i18n="navCheck"></a><a href="#tests" data-i18n="navTests"></a><a href="#data" data-i18n="navData"></a>
+</nav>
+<div id="tip" role="tooltip"></div>
+
+<section class="band alt" id="areas"><div class="wrap">
+<h2 data-t="areasH"></h2>
+<p data-t="areasP"></p>
+<div class="two">
+<div class="fig" id="radar" role="img" data-i18n-aria="aRadar" aria-label=""></div>
+<div id="lensList"></div>
+</div>
+</div></section>
+
+<section class="band" id="flows"><div class="wrap">
+<h2 data-t="flowsH"></h2>
+<p data-t="flowsP"></p>
+<div class="route" id="route"></div>
+<div class="legend"><span style="--c:var(--ink)" data-i18n="lgOk"></span><span style="--c:var(--amber)" data-i18n="lgWarn"></span><span style="--c:var(--red)" data-i18n="lgBad"></span></div>
+</div></section>
+
+<section class="band alt" id="matrix"><div class="wrap">
+<h2 data-t="matrixH"></h2>
+<p data-t="matrixP"></p>
+<div class="fig" id="mx" style="min-height:420px" role="img" data-i18n-aria="aMatrix" aria-label=""></div>
+</div></section>
+
+<section class="band" id="bugs"><div class="wrap">
+<h2 data-t="bugsH"></h2>
+<p data-t="bugsP"></p>
+<div class="chips" role="group" data-i18n-aria="aFilter" aria-label="">
+<button class="chip" data-f="all" aria-pressed="true" data-i18n="fAll"></button>
+<button class="chip" data-f="crit" aria-pressed="false" data-i18n="fCrit"></button>
+<button class="chip" data-f="bug" aria-pressed="false" data-i18n="fBug"></button>
+<button class="chip" data-f="gap" aria-pressed="false" data-i18n="fGap"></button>
+</div>
+<div class="scroll"><table class="stack"><thead><tr><th>#</th><th data-i18n="thBug"></th><th data-i18n="thArea"></th><th data-i18n="thSev"></th><th>I</th><th>C</th><th>E</th><th>ICE</th></tr></thead><tbody id="tbody"></tbody></table></div>
+</div></section>
+
+<section class="band alt" id="next"><div class="wrap">
+<h2 data-t="nextH"></h2>
+<p data-t="nextP"></p>
+<div class="cards" id="cards"></div>
+</div></section>
+
+<section class="band" id="plan"><div class="wrap">
+<h2 data-t="planH"></h2>
+<p data-t="planP"></p>
+<div class="chips tools"><button class="chip" id="toggleAll" aria-pressed="false" data-i18n="expand"></button></div>
+<div class="plan" id="planList"></div>
+</div></section>
+
+<section class="band alt" id="checklist"><div class="wrap">
+<h2 data-t="checkH"></h2>
+<p data-t="checkP"></p>
+<div class="seg" id="seg" role="img" data-i18n-aria="aCheck" aria-label=""></div>
+<div class="checks" id="checks"></div>
+</div></section>
+
+<section class="band" id="tests"><div class="wrap">
+<h2 data-t="testsH"></h2>
+<p data-t="testsP"></p>
+<div class="scroll"><table class="stack" id="ttable"><thead><tr><th>ID</th><th data-i18n="thCheck"></th><th data-i18n="thArea"></th><th data-i18n="thNow"></th></tr></thead><tbody id="tbody2"></tbody></table></div>
+<pre class="cmd" id="cmd"></pre>
+</div></section>
+
+<section class="band alt" id="data"><div class="wrap">
+<div class="two" style="margin-top:0">
+<div>
+<h2 data-t="dataH"></h2>
+<p data-t="dataP"></p>
+<div class="conf"><div class="lens" style="grid-template-columns:minmax(0,9em) minmax(0,1fr) 3em"><span data-i18n="conf"></span><div class="meter"><i id="confBar"></i></div><b id="confNum"></b></div></div>
+<h3 style="margin-top:22px" data-i18n="answers"></h3>
+<dl class="answers" id="answers"></dl>
+</div>
+<div class="src" id="src"></div>
+</div>
+<details><summary data-i18n="gloss"></summary><p data-i18n="glossHint"></p><dl class="gloss" id="gloss"></dl></details>
+<details><summary data-i18n="how"></summary><div data-t="how"></div></details>
+</div></section>
+
+<footer class="band" style="padding-block:20px"><div class="wrap"><span data-i18n="footer"></span><span data-t="footer"></span></div></footer>
+
+<script type="application/json" id="audit">
+{
+ "lang": "en",
+ "title": "QA audit demo: Harbourline Cargo",
+ "target": {
+  "url": "https://harbourline.example/",
+  "env": "production",
+  "deploy": "new theme, release 4.0",
+  "date": "checked the day after"
+ },
+ "text": {
+  "label": "Demo report: fictional site \"Harbourline Cargo\", all data made up",
+  "headline": "Release 4.0 [[breaks the quote form on phones]] and stops counting leads",
+  "lead": "Desktop users can still request a quote, but on a 390 px phone the form is 690 px wide and the last fields sit off-screen. The form's success event no longer reaches GA4 either, so the drop in leads would go unseen. Fix those two before the next deploy; the rest can go into the backlog.",
+  "areasNote": "Each bar is one area's checks: black passed, amber warnings, vermilion failed. All 11 areas were checked in this run.",
+  "areasH": "Mobile and analytics fail; console, speed and copy need work",
+  "areasP": "Scores 0-100 show how ready each area is for production: 100 minus points per finding, weighted by severity. Below 40 means broken where it matters.",
+  "flowsH": "The quote flow breaks twice: on phones, and after sending",
+  "flowsP": "The key visitor flows from the homepage to a quote request, a call and the German version. Forms were filled up to the submit button and never sent.",
+  "matrixH": "{qw} quick fixes with high impact and low effort",
+  "matrixP": "Each dot is a finding from the table below. Black dots are bugs, outlined dots are gaps in coverage or process, vermilion dots are the top 3.",
+  "bugsH": "{n} findings, by severity then ICE",
+  "bugsP": "ICE = impact × confidence × ease (each 1-10). Observed means you can see it in a screenshot or a log; hypothesis means it still needs confirming.",
+  "nextH": "Fix these three before the next deploy",
+  "nextP": "For each: what is broken, when it counts as fixed, and which automated test proves it.",
+  "planH": "All {n} findings: steps, expected, actual, evidence",
+  "planP": "Every finding has steps to reproduce, expected and actual results, evidence, a fix and an automated test. The top 3 also list the fix options considered, a done-when threshold and a pre-mortem.",
+  "checkH": "Post-deploy checklist: 4 of 9 items fail",
+  "checkP": "The short list to run after every release: tag, events, redirects, forms, texts, languages, sitemap, console and speed.",
+  "testsH": "{tests} automated checks to rerun after every deploy",
+  "testsP": "The checks never submit a form: the lead event is tested by firing the form's success event in the browser. Status \"now\" is the result of running the suite once during this audit.",
+  "testsCmd": "cd qa-tests\nnpm install\nnpx playwright install chromium\nnpx playwright test              # after every deploy\nBROWSERS=all npx playwright test # + Firefox and WebKit (Safari)",
+  "dataH": "Confidence is demo-level: every source here is fictional",
+  "dataP": "In a real run these rows show which tools were used (browser, headless Playwright, PageSpeed, CMS, GA4) and which were missing. Each missing source lowers confidence, and an area that could not be checked shows as \"not checked\".",
+  "how": [
+   "Checked the connected tools: browser, headless Playwright with three engines, PageSpeed Insights and a read-only WordPress connector.",
+   "Asked 4 start questions, each one skippable. One was skipped and replaced with a stated assumption.",
+   "Walked the key flows at 1280, 820 and 390 px. Read the console, network, dataLayer, sitemap and redirects, crawling politely at one request every 1.5 s.",
+   "Confirmed each known issue with our own evidence. Ranked findings by severity, then ICE, and added fix options, thresholds and a pre-mortem for the top 3.",
+   "Wrote a test for every bug, ran the suite once, and render-checked this report on desktop, tablet and phone."
+  ],
+  "footer": "demo data"
+ },
+ "kpis": [
+  {
+   "v": "{health}/100",
+   "l": "QA health across 11 areas"
+  },
+  {
+   "v": "{failed}",
+   "l": "Checks failed out of {checks}",
+   "hot": true
+  },
+  {
+   "v": "{crit}",
+   "l": "Critical bugs, both on the quote flow"
+  },
+  {
+   "v": "4.8 s",
+   "l": "Mobile LCP (lab, target ≤ 2.5 s)",
+   "src": "PageSpeed Insights"
+  }
+ ],
+ "verdict": {
+  "cur": 1,
+  "note": "The site is up and desktop quotes work, but phone users cannot complete the form and no lead is measured. Hotfix both before the next deploy."
+ },
+ "areas": [
+  {
+   "k": "Flows",
+   "n": "Key user flows",
+   "i": "flows",
+   "g": "works",
+   "s": 60,
+   "pass": 7,
+   "fail": 2,
+   "warn": 0
+  },
+  {
+   "k": "Forms",
+   "n": "Forms and validation",
+   "i": "forms",
+   "g": "works",
+   "s": 100,
+   "pass": 10,
+   "fail": 0,
+   "warn": 0,
+   "sub": "never submitted"
+  },
+  {
+   "k": "Links",
+   "n": "Links and redirects",
+   "i": "links",
+   "g": "works",
+   "s": 80,
+   "pass": 46,
+   "fail": 14,
+   "warn": 0
+  },
+  {
+   "k": "Copy",
+   "n": "Copy and translation",
+   "i": "copy",
+   "g": "looks",
+   "s": 72,
+   "pass": 18,
+   "fail": 2,
+   "warn": 1
+  },
+  {
+   "k": "Mobile",
+   "n": "Mobile and tablet",
+   "i": "mobile",
+   "g": "looks",
+   "s": 50,
+   "pass": 3,
+   "fail": 1,
+   "warn": 1
+  },
+  {
+   "k": "Browsers",
+   "n": "Cross-browser",
+   "i": "browsers",
+   "g": "looks",
+   "s": 87,
+   "pass": 8,
+   "fail": 0,
+   "warn": 1
+  },
+  {
+   "k": "Errors",
+   "n": "Console and network",
+   "i": "errors",
+   "g": "health",
+   "s": 92,
+   "pass": 9,
+   "fail": 1,
+   "warn": 0
+  },
+  {
+   "k": "Speed",
+   "n": "Performance",
+   "i": "perf",
+   "g": "health",
+   "s": 61,
+   "pass": 2,
+   "fail": 1,
+   "warn": 1
+  },
+  {
+   "k": "A11y",
+   "n": "Accessibility",
+   "i": "a11y",
+   "g": "health",
+   "s": 82,
+   "pass": 6,
+   "fail": 1,
+   "warn": 1
+  },
+  {
+   "k": "Analytics",
+   "n": "Analytics and events",
+   "i": "analytics",
+   "g": "measure",
+   "s": 40,
+   "pass": 3,
+   "fail": 3,
+   "warn": 0
+  },
+  {
+   "k": "Deploy",
+   "n": "Post-deploy checklist",
+   "i": "deploy",
+   "g": "measure",
+   "s": 33,
+   "pass": 3,
+   "fail": 4,
+   "warn": 2
+  }
+ ],
+ "route": [
+  {
+   "t": "Homepage",
+   "w": "Visitor",
+   "st": "ok",
+   "p": "200, hero and quote CTA visible"
+  },
+  {
+   "t": "Service cards",
+   "w": "Homepage",
+   "st": "warn",
+   "p": "Customs card shows reefer text"
+  },
+  {
+   "t": "Old bookmarks",
+   "w": "/services/*",
+   "st": "bad",
+   "p": "14 old URLs return 404"
+  },
+  {
+   "t": "Quote form, desktop",
+   "w": "#quote",
+   "st": "ok",
+   "p": "6 fields, validation messages clear"
+  },
+  {
+   "t": "Quote form, phone",
+   "w": "390 px",
+   "st": "bad",
+   "p": "Form 690 px wide, fields off-screen"
+  },
+  {
+   "t": "Quote sent",
+   "w": "GA4",
+   "st": "bad",
+   "p": "No generate_lead after success event"
+  },
+  {
+   "t": "Track a shipment",
+   "w": "/tracking/",
+   "st": "warn",
+   "p": "Works, but no GA4 tag on this template"
+  },
+  {
+   "t": "German version",
+   "w": "/de/",
+   "st": "warn",
+   "p": "Quote button still in English"
+  }
+ ],
+ "bugs": [
+  {
+   "t": "Quote form is 690 px wide on a 390 px phone; last fields off-screen",
+   "l": "mobile",
+   "ln": "Mobile",
+   "x": "bug",
+   "sev": "critical",
+   "ev": "obs",
+   "I": 9,
+   "C": 9,
+   "E": 8
+  },
+  {
+   "t": "Form success event no longer sends generate_lead to GA4",
+   "l": "analytics",
+   "ln": "Analytics",
+   "x": "bug",
+   "sev": "critical",
+   "ev": "obs",
+   "I": 8,
+   "C": 9,
+   "E": 8
+  },
+  {
+   "t": "14 URLs from the old theme return 404 (no redirects)",
+   "l": "links",
+   "ln": "Links",
+   "x": "bug",
+   "sev": "major",
+   "ev": "obs",
+   "I": 8,
+   "C": 9,
+   "E": 7
+  },
+  {
+   "t": "\"Customs brokerage\" card shows the refrigerated-cargo text",
+   "l": "copy",
+   "ln": "Copy",
+   "x": "bug",
+   "sev": "major",
+   "ev": "obs",
+   "I": 5,
+   "C": 10,
+   "E": 10
+  },
+  {
+   "t": "GA4 tag missing on the /tracking/ page template",
+   "l": "analytics",
+   "ln": "Analytics",
+   "x": "bug",
+   "sev": "major",
+   "ev": "obs",
+   "I": 6,
+   "C": 9,
+   "E": 8
+  },
+  {
+   "t": "Mobile LCP 4.8 s: hero image is lazy-loaded",
+   "l": "perf",
+   "ln": "Speed",
+   "x": "bug",
+   "sev": "major",
+   "ev": "obs",
+   "I": 6,
+   "C": 8,
+   "E": 7
+  },
+  {
+   "t": "Quote button on /de/ still reads \"Get a quote\"",
+   "l": "copy",
+   "ln": "Copy",
+   "x": "bug",
+   "sev": "minor",
+   "ev": "obs",
+   "I": 4,
+   "C": 10,
+   "E": 9
+  },
+  {
+   "t": "TypeError in slider.js on /about/",
+   "l": "errors",
+   "ln": "Errors",
+   "x": "bug",
+   "sev": "minor",
+   "ev": "obs",
+   "I": 3,
+   "C": 9,
+   "E": 8
+  },
+  {
+   "t": "Amber CTA text fails contrast (1.9:1)",
+   "l": "a11y",
+   "ln": "A11y",
+   "x": "bug",
+   "sev": "minor",
+   "ev": "obs",
+   "I": 4,
+   "C": 9,
+   "E": 9
+  },
+  {
+   "t": "Sticky header may hide the #quote heading in Safari",
+   "l": "browsers",
+   "ln": "Browsers",
+   "x": "bug",
+   "sev": "trivial",
+   "ev": "hyp",
+   "I": 2,
+   "C": 5,
+   "E": 8
+  },
+  {
+   "t": "Nobody runs post-deploy checks; this release went live untested",
+   "l": "deploy",
+   "ln": "Deploy",
+   "x": "gap",
+   "sev": "minor",
+   "ev": "obs",
+   "I": 7,
+   "C": 7,
+   "E": 7
+  }
+ ],
+ "plans": {
+  "1": {
+   "h": "On a 390 px phone the quote form is 690 px wide, so visitors scroll sideways and miss the Email field.",
+   "m": "No sideways scroll at 390 and 820 px; all 6 fields are reachable with one thumb.",
+   "t": "Test T06 at phone and tablet widths, then one manual check on a real phone."
+  },
+  "2": {
+   "h": "Since release 4.0 the form's success event fires, but nothing listens for it, so no lead reaches GA4.",
+   "m": "A test lead appears in GA4 DebugView as generate_lead, marked as a key event.",
+   "t": "Test T04 (synthetic success event, nothing sent)."
+  },
+  "3": {
+   "h": "Links to 14 pages from the old theme (ads, emails, Google) now land on a 404.",
+   "m": "Each old URL 301-redirects in one hop to its new page.",
+   "t": "Tests T09-T09c, plus Search Console's 404 report after a week."
+  }
+ },
+ "detail": {
+  "1": {
+   "steps": [
+    "Open https://harbourline.example/ at 390 × 844 (iPhone 13/14 size).",
+    "Tap \"Get a quote\" to jump to #quote.",
+    "Try to reach the Phone and Email fields."
+   ],
+   "exp": "The form fits in one column; no sideways scroll.",
+   "act": "The form grid has three fixed 220 px columns (690 px in total). The page scrolls sideways and Email sits off-screen.",
+   "env": "Playwright Chromium and WebKit, 390 × 844, touch",
+   "evid": [
+    {
+     "k": "shot",
+     "src": "shots/02-quote-form-390.jpg",
+     "t": "Quote form at 390 px (outlined)"
+    },
+    {
+     "k": "dom",
+     "t": "documentElement.scrollWidth = 702 at innerWidth 390; form computed grid-template-columns: 220px 220px 220px"
+    }
+   ],
+   "fix": [
+    "In the theme CSS, change the form grid to repeat(auto-fit, minmax(14rem, 1fr)).",
+    "Set inputs to width: 100% and font-size: 16px to stop iOS zooming in.",
+    "Re-run T06, then check once on a real phone."
+   ],
+   "test": "T06",
+   "effort": "≈30 minutes",
+   "risk": "Other forms on the site may share the class; check the contact page too.",
+   "alt": [
+    "Hide the extra fields on phones: rejected, because sales need the route and the cargo type.",
+    "A separate mobile form: rejected, because two forms to maintain would drift apart again."
+   ],
+   "thr": "T06 passes at 390 and 820 px, and no field needs a sideways scroll.",
+   "pm": "It failed because the cache plugin kept serving the old CSS file. Purge the cache and bump the theme version in the same deploy."
+  },
+  "2": {
+   "steps": [
+    "Open the homepage and wrap dataLayer.push to record events.",
+    "Fire the form's success event on the form element (synthetic; nothing is sent).",
+    "Wait 1.5 s, then read dataLayer and the /g/collect requests."
+   ],
+   "exp": "generate_lead in dataLayer and a GA4 hit with en=generate_lead.",
+   "act": "No new dataLayer entries. The old snippet listened on .wpcf7-form, which the new theme renamed.",
+   "env": "Chrome desktop; GA4 via gtag.js",
+   "evid": [
+    {
+     "k": "dom",
+     "t": "dataLayer +0 after synthetic success event; snippet selector .wpcf7-form matches 0 elements"
+    },
+    {
+     "k": "log",
+     "t": "WPCode snippet \"lead-event\" active, last edited before release 4.0"
+    }
+   ],
+   "fix": [
+    "Listen on document instead of a theme class: document.addEventListener('wpcf7mailsent', …).",
+    "Keep generate_lead marked as a key event in GA4.",
+    "Confirm in DebugView with one owner-sent test lead marked \"TEST\"."
+   ],
+   "test": "T04",
+   "effort": "≈20 minutes",
+   "risk": "Double counting if GTM also fires on the thank-you URL. Keep a single source for the event.",
+   "alt": [
+    "Track the thank-you page view instead: rejected, because the form shows an inline message and has no thank-you URL.",
+    "Move all tracking to GTM: later, as a bigger change than this hotfix."
+   ],
+   "thr": "T04 passes and DebugView shows generate_lead for the test lead.",
+   "pm": "It failed because the snippet only loads on the homepage while the form also sits on /contact/. Load it site-wide and add T04b for /contact/."
+  },
+  "3": {
+   "steps": [
+    "Take the old URL list from the previous sitemap (kept in the repo).",
+    "Request each URL at one request per 1.5 s.",
+    "Note the status and the final URL."
+   ],
+   "exp": "Each old URL 301-redirects to its new page.",
+   "act": "14 of 60 old URLs return 404, all under /services/*.",
+   "env": "Playwright request context",
+   "evid": [
+    {
+     "k": "network",
+     "t": "404 /services/sea/ · 404 /services/road/ · 404 /services/air/ … (14 in total)"
+    }
+   ],
+   "fix": [
+    "Add 301s in the Redirection plugin: /services/sea/ → /sea-freight/, and so on (14 rows).",
+    "Re-run T09-T09c and the sitemap check."
+   ],
+   "test": "T09",
+   "effort": "≈40 minutes",
+   "risk": "Redirect chains: point each rule straight at the final URL.",
+   "alt": [
+    "One regex rule /services/(.*) → /$1-freight/: rejected, because 3 slugs do not follow the pattern.",
+    "Server-level rules: possible, but the team edits redirects in WordPress."
+   ],
+   "thr": "T09-T09c pass, and Search Console's 404 count for /services/* falls to 0 within a week.",
+   "pm": "It failed because the cache served old 404s. Purge the cache after adding the rules."
+  },
+  "4": {
+   "steps": [
+    "Open the homepage.",
+    "Read the \"Customs brokerage\" card in \"Freight solutions for every route\"."
+   ],
+   "exp": "A line about customs clearance.",
+   "act": "\"Refrigerated cargo at controlled temperature.\"",
+   "env": "All browsers",
+   "evid": [
+    {
+     "k": "shot",
+     "src": "shots/01-customs-card.jpg",
+     "t": "The Customs brokerage card (outlined)"
+    }
+   ],
+   "fix": [
+    "Ask the owner for one line on the customs service.",
+    "Replace the text in every language version."
+   ],
+   "test": "T07",
+   "effort": "≈10 minutes",
+   "risk": "None."
+  },
+  "5": {
+   "steps": [
+    "Open /tracking/.",
+    "Look for gtag.js with the measurement id and a /g/collect hit."
+   ],
+   "exp": "The same GA4 tag as on other pages.",
+   "act": "No tag on this page; the tracking template has its own header.php.",
+   "env": "Chrome",
+   "evid": [
+    {
+     "k": "network",
+     "t": "/tracking/: 0 requests to googletagmanager.com, 0 to /g/collect"
+    }
+   ],
+   "fix": [
+    "Call wp_head() in the tracking template's header, or move the tag into a site-wide snippet.",
+    "Add T03b to the suite."
+   ],
+   "test": "T03b",
+   "effort": "≈20 minutes",
+   "risk": "None."
+  },
+  "6": {
+   "steps": [
+    "Run PageSpeed Insights on the homepage, mobile, 3 times.",
+    "Check the LCP element."
+   ],
+   "exp": "LCP ≤ 2.5 s.",
+   "act": "Median LCP 4.8 s. The LCP element is the hero image, which has loading=\"lazy\".",
+   "env": "PageSpeed Insights mobile, lab",
+   "evid": [
+    {
+     "k": "psi",
+     "t": "Performance 61 · LCP 4.8 s · CLS 0.02 · TBT 90 ms (median of 3)"
+    }
+   ],
+   "fix": [
+    "Remove loading=\"lazy\" from the hero and add fetchpriority=\"high\".",
+    "Serve the hero as WebP with srcset."
+   ],
+   "test": "",
+   "effort": "≈1 hour",
+   "risk": "Lab numbers vary: compare medians."
+  },
+  "7": {
+   "steps": [
+    "Open /de/.",
+    "Read the CTA in the header and in the hero."
+   ],
+   "exp": "\"Angebot anfordern\".",
+   "act": "\"Get a quote\" (the string was never translated).",
+   "env": "All browsers",
+   "evid": [
+    {
+     "k": "dom",
+     "t": "/de/ header .cta innerText = \"Get a quote →\""
+    }
+   ],
+   "fix": [
+    "Translate the string in the language plugin's string translations.",
+    "Run T08."
+   ],
+   "test": "T08",
+   "effort": "≈10 minutes",
+   "risk": "None."
+  },
+  "8": {
+   "steps": [
+    "Open /about/ with the console open.",
+    "Wait for the page to load and read the errors."
+   ],
+   "exp": "No errors.",
+   "act": "Uncaught TypeError: Cannot read properties of null (reading 'addEventListener') at slider.js:14",
+   "env": "Chromium, Firefox, WebKit",
+   "evid": [
+    {
+     "k": "console",
+     "t": "Uncaught TypeError: Cannot read properties of null (reading 'addEventListener') at slider.js:14"
+    }
+   ],
+   "fix": [
+    "Load slider.js only on pages with a slider, or guard the element with if (el)."
+   ],
+   "test": "T10",
+   "effort": "≈15 minutes",
+   "risk": "None."
+  },
+  "9": {
+   "steps": [
+    "Open the homepage.",
+    "Run axe (WCAG 2 A and AA) and filter by serious and critical."
+   ],
+   "exp": "No serious contrast violations.",
+   "act": "color-contrast (serious): white text on #ffb648 = 1.9:1 on 2 buttons.",
+   "env": "axe-core 4.10",
+   "evid": [
+    {
+     "k": "axe",
+     "t": "serious color-contrast: 2 elements (.cta, .hero .button)"
+    }
+   ],
+   "fix": [
+    "Use dark text #1d2433 on amber (8.9:1), or darken the amber."
+   ],
+   "test": "T12",
+   "effort": "≈10 minutes",
+   "risk": "Brand look: show the option to the owner."
+  },
+  "10": {
+   "steps": [
+    "In WebKit, tap \"Get a quote\".",
+    "See where #quote lands under the sticky header."
+   ],
+   "exp": "The heading is visible below the header.",
+   "act": "In one WebKit run the heading sat under the 64 px header. Not reproduced in Chromium.",
+   "env": "Playwright WebKit 1280 px",
+   "evid": [
+    {
+     "k": "log",
+     "t": "WebKit run 1: #quote top = 12 px (under the header); run 2: 70 px"
+    }
+   ],
+   "fix": [
+    "Add html { scroll-padding-top: 72px }."
+   ],
+   "test": "",
+   "effort": "≈5 minutes",
+   "risk": "None."
+  },
+  "11": {
+   "steps": [
+    "Ask how release 4.0 was checked.",
+    "Look for any CI or uptime check."
+   ],
+   "exp": "A short post-deploy check runs after each release.",
+   "act": "No checks: the release went live on Friday and the form bug was found by this audit.",
+   "env": "Process",
+   "evid": [
+    {
+     "k": "log",
+     "t": "Owner's answer: \"we look at the homepage after deploy\""
+    }
+   ],
+   "fix": [
+    "Run qa-tests after every deploy (by hand, or in CI on a deploy hook).",
+    "Add an uptime monitor for / and /tracking/."
+   ],
+   "test": "T01",
+   "effort": "≈1 hour to set up",
+   "risk": "Tests that cry wolf get ignored: keep the suite short and fix flaky checks at once."
+  }
+ },
+ "checklist": [
+  {
+   "t": "GA4 tag on every template",
+   "st": "fail",
+   "note": "Missing on /tracking/ (#5)."
+  },
+  {
+   "t": "Key events (lead, call, email)",
+   "st": "fail",
+   "note": "No generate_lead (#2). phone_click works."
+  },
+  {
+   "t": "Old URLs redirect",
+   "st": "fail",
+   "note": "14 of 60 return 404 (#3)."
+  },
+  {
+   "t": "Forms: fields and validation",
+   "st": "pass",
+   "note": "6 fields, clear messages. Never submitted."
+  },
+  {
+   "t": "Texts and cards",
+   "st": "fail",
+   "note": "Customs card (#4)."
+  },
+  {
+   "t": "Language versions",
+   "st": "warn",
+   "note": "One untranslated button on /de/ (#7)."
+  },
+  {
+   "t": "Sitemap and hreflang",
+   "st": "pass",
+   "note": "All 46 sitemap URLs answer 200."
+  },
+  {
+   "t": "Console and network clean",
+   "st": "pass",
+   "note": "Clean on 9 of 10 key pages; /about/ has #8."
+  },
+  {
+   "t": "PageSpeed mobile",
+   "st": "warn",
+   "note": "Score 61, LCP 4.8 s (#6)."
+  }
+ ],
+ "tests": [
+  {
+   "id": "T01",
+   "t": "Homepage answers 200",
+   "area": "flows",
+   "st": "pass"
+  },
+  {
+   "id": "T02",
+   "t": "GA4 tag present and sending on /",
+   "area": "analytics",
+   "st": "pass"
+  },
+  {
+   "id": "T03b",
+   "t": "GA4 tag present on /tracking/",
+   "area": "analytics",
+   "st": "fail"
+  },
+  {
+   "id": "T04",
+   "t": "Form success event → generate_lead (no submit)",
+   "area": "analytics",
+   "st": "fail"
+  },
+  {
+   "id": "T05",
+   "t": "Phone link click → phone_click",
+   "area": "analytics",
+   "st": "pass"
+  },
+  {
+   "id": "T06",
+   "t": "No sideways scroll at 390 and 820 px",
+   "area": "mobile",
+   "st": "fail"
+  },
+  {
+   "id": "T07",
+   "t": "Customs card text is about customs",
+   "area": "copy",
+   "st": "fail"
+  },
+  {
+   "id": "T08",
+   "t": "No English UI text on /de/",
+   "area": "copy",
+   "st": "fail"
+  },
+  {
+   "id": "T09",
+   "t": "/services/sea/ → /sea-freight/",
+   "area": "links",
+   "st": "fail"
+  },
+  {
+   "id": "T09b",
+   "t": "/services/road/ → /road-freight/",
+   "area": "links",
+   "st": "fail"
+  },
+  {
+   "id": "T09c",
+   "t": "/services/air/ → /air-freight/",
+   "area": "links",
+   "st": "fail"
+  },
+  {
+   "id": "T10",
+   "t": "/about/ without console errors",
+   "area": "errors",
+   "st": "fail"
+  },
+  {
+   "id": "T11",
+   "t": "Quote form: required fields and types",
+   "area": "forms",
+   "st": "pass"
+  },
+  {
+   "id": "T12",
+   "t": "axe: no serious or critical violations",
+   "area": "a11y",
+   "st": "fail"
+  },
+  {
+   "id": "T13",
+   "t": "Every sitemap URL answers 200 without a redirect",
+   "area": "deploy",
+   "st": "pass"
+  }
+ ],
+ "suite": {
+  "baseURL": "https://harbourline.example",
+  "locale": "en-GB",
+  "delayMs": 1500,
+  "checks": [
+   {
+    "id": "T01",
+    "type": "status",
+    "url": "/"
+   },
+   {
+    "id": "T02",
+    "type": "ga4_tag",
+    "url": "/",
+    "measurementId": "G-DEMO12345"
+   },
+   {
+    "id": "T03b",
+    "type": "ga4_tag",
+    "url": "/tracking/",
+    "measurementId": "G-DEMO12345"
+   },
+   {
+    "id": "T04",
+    "type": "form_event",
+    "url": "/",
+    "form": ".wpcf7",
+    "domEvent": "wpcf7mailsent",
+    "event": "generate_lead"
+   },
+   {
+    "id": "T05",
+    "type": "click_event",
+    "url": "/",
+    "selector": "a[href^='tel:']",
+    "event": "phone_click"
+   },
+   {
+    "id": "T06",
+    "type": "no_h_scroll",
+    "url": "/",
+    "viewports": [
+     "phone",
+     "tablet"
+    ]
+   },
+   {
+    "id": "T07",
+    "type": "text",
+    "url": "/",
+    "selector": ".card",
+    "filter": "Customs brokerage",
+    "pattern": "customs|clearance"
+   },
+   {
+    "id": "T08",
+    "type": "ui_language",
+    "url": "/de/",
+    "selector": "header a, .cta, button",
+    "forbid": "\\b(Get a quote|Contact|Services)\\b"
+   },
+   {
+    "id": "T09",
+    "type": "redirect",
+    "from": "/services/sea/",
+    "to": "/sea-freight/"
+   },
+   {
+    "id": "T09b",
+    "type": "redirect",
+    "from": "/services/road/",
+    "to": "/road-freight/"
+   },
+   {
+    "id": "T09c",
+    "type": "redirect",
+    "from": "/services/air/",
+    "to": "/air-freight/"
+   },
+   {
+    "id": "T10",
+    "type": "console_clean",
+    "url": "/about/"
+   },
+   {
+    "id": "T11",
+    "type": "form_fields",
+    "url": "/",
+    "form": ".wpcf7 form",
+    "required": [
+     "from",
+     "to",
+     "your-name",
+     "email"
+    ],
+    "types": {
+     "email": "email",
+     "phone": "tel"
+    }
+   },
+   {
+    "id": "T12",
+    "type": "axe",
+    "url": "/",
+    "impact": [
+     "serious",
+     "critical"
+    ]
+   },
+   {
+    "id": "T13",
+    "type": "sitemap",
+    "url": "/wp-sitemap.xml",
+    "max": 50
+   }
+  ]
+ },
+ "answers": [
+  {
+   "q": "What changed in this deploy?",
+   "a": "New theme (release 4.0), same plugins"
+  },
+  {
+   "q": "Key flows",
+   "a": "Quote request form, phone click, shipment tracking"
+  },
+  {
+   "q": "Access",
+   "a": "Read-only WordPress connector; GA4 via the owner's screen share"
+  },
+  {
+   "q": "Known issues",
+   "a": "Skipped. Assumption: none known, so everything found is new",
+   "skipped": true
+  }
+ ],
+ "sources": [
+  {
+   "name": "Browser walk-through",
+   "note": "demo",
+   "status": "demo"
+  },
+  {
+   "name": "Headless Playwright (3 engines)",
+   "note": "demo",
+   "status": "demo"
+  },
+  {
+   "name": "PageSpeed Insights",
+   "note": "demo",
+   "status": "demo"
+  },
+  {
+   "name": "WordPress connector",
+   "note": "demo",
+   "status": "demo"
+  },
+  {
+   "name": "Start answers (3 of 4)",
+   "note": "demo",
+   "status": "demo"
+  },
+  {
+   "name": "GA4 admin",
+   "note": "not connected",
+   "status": "no"
+  }
+ ],
+ "glossary": {
+  "GA4": {
+   "g": "Google Analytics 4",
+   "d": "Google's analytics. Here it counts page views but not leads."
+  },
+  "generate_lead": {
+   "g": "GA4 lead event",
+   "d": "GA4's recommended event name for a submitted lead form, usually marked as a key event."
+  },
+  "key event": {
+   "g": "conversion in GA4",
+   "d": "An event GA4 treats as a goal (formerly a \"conversion\"), such as a lead or a call."
+  },
+  "dataLayer": {
+   "g": "event queue",
+   "d": "The array on the page that gtag and GTM read events from. We watch it for new entries."
+  },
+  "DebugView": {
+   "g": "GA4 live debug",
+   "d": "A GA4 screen that shows a test device's events in real time."
+  },
+  "LCP": {
+   "g": "largest paint",
+   "d": "Largest Contentful Paint: when the biggest block of the first screen appears. Good is 2.5 s or less."
+  },
+  "ICE": {
+   "g": "priority score",
+   "d": "Impact × Confidence × Ease, each from 1 to 10."
+  },
+  "pre-mortem": {
+   "g": "failure in advance",
+   "d": "Imagine the fix failed and explain why. The reason becomes a step to check."
+  },
+  "301": {
+   "g": "permanent redirect",
+   "d": "Tells browsers and Google a page moved for good; keeps links and rankings."
+  },
+  "axe": {
+   "g": "accessibility checker",
+   "d": "An automated scan for WCAG violations such as low contrast or missing labels."
+  },
+  "WCAG": {
+   "g": "accessibility standard",
+   "d": "Web Content Accessibility Guidelines, the rules that make sites usable for people with disabilities."
+  },
+  "WebKit": {
+   "g": "Safari's engine",
+   "d": "The browser engine behind Safari; Playwright runs it to test the site as Safari would."
+  },
+  "Playwright": {
+   "g": "browser test tool",
+   "d": "Opens the site in Chromium, Firefox and WebKit and checks it step by step. The tests are in qa-tests/."
+  },
+  "CTA": {
+   "g": "call to action",
+   "d": "The button that leads to the main action, here \"Get a quote\"."
+  },
+  "sitemap": {
+   "g": "URL list for search engines",
+   "d": "The XML list of pages the site asks search engines to index. It should hold only final URLs that answer 200."
+  },
+  "hreflang": {
+   "g": "language versions for Google",
+   "d": "Tags that tell search engines which page is in which language."
+  }
+ }
+}
+</script>
+
+<script>
+{
+const UI={
+ uk:{locale:"uk-UA",navAreas:"Області",navFlows:"Сценарії",navMatrix:"Матриця",navBugs:"Баги",navNext:"Топ-3",navPlan:"Усі баги",navCheck:"Чекліст деплою",navTests:"Тести",navData:"Дані",
+  aNav:"Розділи",aAreas:"Перевірки за областями",aVerdict:"Вердикт релізу",aRadar:"Радар оцінок за областями",aMatrix:"Матриця вплив–зусилля",aFilter:"Фільтр",aCheck:"Чекліст після деплою",
+  lgPass:"Пройдено",lgWarn2:"Попередження",lgFail:"Не пройдено",lgNc:"Не перевірено",
+  lgOk:"Працює",lgWarn:"Є тертя",lgBad:"Зламано",fAll:"Усі",fCrit:"Блокери й критичні",fBug:"Баги",fGap:"Прогалини",
+  thBug:"Баг або прогалина",thArea:"Область",thSev:"Серйозність",thCheck:"Що перевіряє",thNow:"Зараз",
+  sev:{blocker:"Блокер",critical:"Критичний",major:"Значний",minor:"Незначний",trivial:"Дрібниця"},
+  bug:"Баг",gap:"Прогалина",obs:"спостережено",hyp:"гіпотеза",
+  hypo:"Що зламано",metricOk:"Готово, коли",test:"Як перевірити",
+  repro:"Кроки відтворення",exp:"Очікувано",act:"Фактично",env:"Середовище",evid:"Докази",fix:"Як виправити",retest:"Автотест",effort:"Зусилля",risk:"Ризик",thr:"Готово, коли",pm:"Pre-mortem",alt:"Розглянуті варіанти фіксу",
+  expand:"Розгорнути всі",collapse:"Згорнути всі",conf:"Впевненість звіту",answers:"Відповіді на старті",gloss:"Словник термінів",
+  glossHint:"Наведіть курсор на підкреслений термін (на телефоні чи планшеті — торкніться його), щоб побачити пояснення.",how:"Як зроблено цей звіт",footer:"Згенеровано скілом qa-audit",
+  vdLbl:"Вердикт релізу",vd:["Блокує реліз","Фікси до наступного деплою","Фікси в беклог","Готово"],
+  groups:{works:"Працює",looks:"Виглядає",health:"Технічно здорово",measure:"Вимірюється"},
+  qWin:"Швидкі фікси",qBig:"Великі фікси",qSmall:"Дрібниці",qPit:"Пастки часу",axE:"Зусилля →",axI:"Вплив →",noData:"не перевірено",
+  st:{pass:"пройдено",fail:"не пройдено",warn:"попередження",nc:"не перевірено",new:"новий"},of:"з"},
+ en:{locale:"en-US",navAreas:"Areas",navFlows:"Flows",navMatrix:"Matrix",navBugs:"Bugs",navNext:"Top 3",navPlan:"All bugs",navCheck:"Deploy checklist",navTests:"Tests",navData:"Data",
+  aNav:"Sections",aAreas:"Checks by area",aVerdict:"Release verdict",aRadar:"Area scores radar",aMatrix:"Impact–effort matrix",aFilter:"Filter",aCheck:"Post-deploy checklist",
+  lgPass:"Passed",lgWarn2:"Warning",lgFail:"Failed",lgNc:"Not checked",
+  lgOk:"Works",lgWarn:"Friction",lgBad:"Broken",fAll:"All",fCrit:"Blockers and critical",fBug:"Bugs",fGap:"Gaps",
+  thBug:"Bug or gap",thArea:"Area",thSev:"Severity",thCheck:"What it checks",thNow:"Now",
+  sev:{blocker:"Blocker",critical:"Critical",major:"Major",minor:"Minor",trivial:"Trivial"},
+  bug:"Bug",gap:"Gap",obs:"observed",hyp:"hypothesis",
+  hypo:"What is broken",metricOk:"Done when",test:"How to verify",
+  repro:"Steps to reproduce",exp:"Expected",act:"Actual",env:"Environment",evid:"Evidence",fix:"How to fix",retest:"Automated test",effort:"Effort",risk:"Risk",thr:"Done when",pm:"Pre-mortem",alt:"Fix options considered",
+  expand:"Expand all",collapse:"Collapse all",conf:"Report confidence",answers:"Answers at the start",gloss:"Glossary",
+  glossHint:"Hover over an underlined term (on a phone or tablet, tap it) to see what it means.",how:"How this report was made",footer:"Generated by qa-audit",
+  vdLbl:"Release verdict",vd:["Blocks release","Fix before next deploy","Fix in backlog","Ready"],
+  groups:{works:"Works",looks:"Looks right",health:"Technically healthy",measure:"Measured"},
+  qWin:"Quick fixes",qBig:"Big fixes",qSmall:"Small fixes",qPit:"Time sinks",axE:"Effort →",axI:"Impact →",noData:"not checked",
+  st:{pass:"passed",fail:"failed",warn:"warning",nc:"not checked",new:"new"},of:"of"}
+};
+const L=UI[(document.documentElement.lang||"en").slice(0,2)]||UI.en;
+document.querySelectorAll("[data-i18n]").forEach(e=>e.textContent=L[e.dataset.i18n]);
+document.querySelectorAll("[data-i18n-aria]").forEach(e=>e.setAttribute("aria-label",L[e.dataset.i18nAria]));
+const esc=v=>String(v).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
+const deep=v=>typeof v=="string"?esc(v):Array.isArray(v)?v.map(deep):v&&typeof v=="object"?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,deep(x)])):v;
+const RAW=JSON.parse(document.getElementById("audit").textContent),D=deep(RAW);
+if(RAW.title)document.title=RAW.title;
+const G=L.groups,areas=D.areas||[],route=D.route||[],checklist=D.checklist||[],tests=D.tests||[];
+const SEV=["blocker","critical","major","minor","trivial"];
+const bugs=(D.bugs||[]).map((o,i)=>({...o,id:i+1,ice:o.I*o.C*o.E,eff:11-o.E,sr:SEV.indexOf(o.sev)}));
+const sorted=[...bugs].sort((a,b)=>a.sr-b.sr||b.ice-a.ice||a.id-b.id);
+const top3=sorted.slice(0,3).map(o=>o.id);
+const plans=D.plans||{},detail=D.detail||{};
+const fmt=n=>n.toLocaleString(L.locale);
+const scored=areas.filter(a=>a.s!=null);
+const health=scored.length?Math.round(scored.reduce((x,a)=>x+a.s,0)/scored.length):"—";
+const sum=k=>areas.reduce((x,a)=>x+(a[k]||0),0);
+const passed=sum("pass"),failed=sum("fail"),warned=sum("warn"),checks=passed+failed+warned;
+const crit=bugs.filter(o=>o.sr<=1).length;
+const qw=bugs.filter(o=>o.I>=6&&o.eff<=5).length;
+const sources=(D.sources||[]).map(s=>[s.name,s.note,s.status]);
+const conf=sources.length?Math.round(sources.reduce((a,s)=>a+(s[2]=="ok"?1:s[2]=="demo"?.6:0),0)/sources.length*100):0;
+const TK={health,qw,n:bugs.length,conf,passed,failed,warned,checks,crit,tests:tests.length,nc:areas.filter(a=>a.s==null).length};
+const tok=v=>String(v).replace(/\{(health|qw|n|conf|passed|failed|warned|checks|crit|tests|nc)\}/g,(_,k)=>TK[k]);
+const rich=v=>tok(v).replace(/\[\[(.+?)\]\]/g,'<span class="red">$1</span>');
+const T=D.text||{};
+document.querySelectorAll("[data-t]").forEach(e=>{const v=T[e.dataset.t];if(v==null||v===""||(Array.isArray(v)&&!v.length)){e.remove();return}e.innerHTML=Array.isArray(v)?v.map((x,i)=>`<p>${i+1}. ${rich(x)}</p>`).join(""):(e.dataset.t=="footer"?" · ":"")+rich(v)});
+const tg0=D.target;const tgt=document.getElementById("target");
+if(tg0)tgt.innerHTML=[tg0.url?`<code>${tg0.url}</code>`:"",tg0.env,tg0.deploy,tg0.date].filter(Boolean).join(" · ");else tgt.remove();
+document.getElementById("kpis").innerHTML=(D.kpis||[]).map(k=>`<div class="kpi"><div class="num${k.hot?" red":""}">${tok(k.v)}</div><small>${tok(k.l)}</small></div>`).join("");
+const ic=(id,c="")=>`<svg class="ico ${c}"><use href="#i-${id}"/></svg>`;
+document.getElementById("areaBars").innerHTML=areas.map(a=>{const nd=a.s==null||(a.pass==null&&a.fail==null&&a.warn==null),p=a.pass||0,w=a.warn||0,f=a.fail||0,t=p+w+f||1,pc=Math.round(p/t*100);
+ return `<div class="area${nd?" nd":""}"><div class="lab">${ic(a.i)}<span>${a.n||a.k}<small>${nd?L.noData:`${p} ${L.st.pass} · ${f} ${L.st.fail}${w?` · ${w} ${L.st.warn}`:""}`}${a.sub?" · "+a.sub:""}</small></span></div><div class="track" style="height:30px">${nd?`<span class="ndl">${L.noData}</span>`:`${p?`<i class="ps" style="width:${p/t*100}%"></i>`:""}${w?`<i class="wr" style="width:${w/t*100}%"></i>`:""}${f?`<i class="fl" style="width:${f/t*100}%"></i>`:""}`}</div><div class="pct${f?" red":""}">${nd?"—":pc+"%"}</div></div>`}).join("");
+const vdv=D.verdict;
+if(!vdv)document.getElementById("verdict").remove();else document.getElementById("verdict").innerHTML=`<div class="st-row">${L.vd.map((s,i)=>`<span class="st${i<vdv.cur?" past":""}${i==vdv.cur?" cur"+(i==0?" bad":i==1?" warn":""):""}">${s}</span>`).join("")}</div><p><b>${L.vdLbl}: ${L.vd[vdv.cur]}.</b> ${vdv.note}</p>`;
+const cls=s=>s<40?"low":s<60?"mid":"";
+document.getElementById("lensList").innerHTML=Object.keys(G).map(g=>`<div class="group"><h3>${G[g]}</h3>${areas.filter(l=>l.g==g).map(l=>`<div class="lens">${ic(l.i)}<span>${l.n||l.k}</span><div class="meter${l.s==null?" nd":""}">${l.s==null?"":`<i class="${cls(l.s)}" style="width:${l.s}%"></i>`}</div><b>${l.s==null?"—":l.s}</b></div>`).join("")}</div>`).join("");
+document.getElementById("route").innerHTML=route.map((r,i)=>`<div class="stop ${r.st}"><div class="dot">${i+1}</div><div><span class="who">${r.w}</span><h3>${r.t}</h3><p>${r.p}</p></div></div>`).join("");
+document.getElementById("route").style.setProperty("--n",Math.max(route.length,1));
+const answers=(D.answers||[]).map(a=>[a.q,a.a,a.skipped]);
+document.getElementById("answers").innerHTML=answers.map(a=>`<dt>${a[0]}</dt><dd${a[2]?' class="skip"':""}>${a[1]}</dd>`).join("");
+const tb=document.getElementById("tbody"),tb2=document.getElementById("tbody2");
+const wrapCells=()=>document.querySelectorAll(".stack tbody td").forEach(td=>{if(td.firstElementChild&&td.firstElementChild.classList.contains("cv")&&td.childNodes.length==1)return;const s=document.createElement("span");s.className="cv";while(td.firstChild)s.append(td.firstChild);td.append(s)});
+const sevTag=o=>`<span class="sev ${o.sev}">${L.sev[o.sev]}</span>`;
+const evTag=o=>`<span class="ev ${o.ev}">${o.ev=="obs"?L.obs:L.hyp}</span>`;
+const renderTable=f=>{tb.innerHTML=sorted.filter(o=>f=="all"||(f=="crit"?o.sr<=1:o.x==f)).map(o=>`<tr class="${top3.includes(o.id)?"top":""}"><td class="n">${o.id}</td><td>${o.t} ${evTag(o)}</td><td><span class="tag">${ic(o.l)}${o.ln}</span></td><td>${sevTag(o)}</td><td class="n">${o.I}</td><td class="n">${o.C}</td><td class="n">${o.E}</td><td><div class="ice"><b class="n">${o.ice}<small class="icef"> = ${o.I}×${o.C}×${o.E}</small></b><div class="meter"><i style="width:${o.ice/Math.max(...bugs.map(b=>b.ice))*100}%"></i></div></div></td></tr>`).join("")};
+renderTable("all");
+document.querySelectorAll("#bugs .chip").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("#bugs .chip").forEach(c=>c.setAttribute("aria-pressed",c===b));renderTable(b.dataset.f);wrapTerms(tb);wrapCells()}));
+const testName=id=>{const t=tests.find(x=>x.id==id);return t?`<code>${t.id}</code> — ${t.t}`:`<code>${id}</code>`};
+document.getElementById("cards").innerHTML=top3.map(id=>{const o=bugs.find(x=>x.id==id),p=plans[id]||{};return `<article class="card"><div class="num">#${id}</div><h3>${o.t}</h3><span class="tag" style="color:var(--mute)">${ic(o.l)}${o.ln} · ${L.sev[o.sev]} · ICE ${o.ice}</span><dl>${p.h?`<dt>${L.hypo}</dt><dd>${p.h}</dd>`:""}${p.m?`<dt>${L.metricOk}</dt><dd>${p.m}</dd>`:""}${p.t?`<dt>${L.test}</dt><dd>${p.t}</dd>`:""}</dl></article>`}).join("");
+const evidHtml=ev=>{if(!ev||!ev.length)return"";const imgs=ev.filter(e=>e.src),txt=ev.filter(e=>!e.src);return `<h4>${L.evid}</h4>${imgs.length?`<div class="evid">${imgs.map(e=>`<figure style="margin:0"><a href="${e.src}" target="_blank" rel="noopener"><img src="${e.src}" alt="${e.t||""}" loading="lazy"></a>${e.t?`<figcaption>${e.t}</figcaption>`:""}</figure>`).join("")}</div>`:""}${txt.length?`<ul class="logs">${txt.map(e=>`<li><b>${e.k||"log"}</b>${e.t}</li>`).join("")}</ul>`:""}`};
+document.getElementById("planList").innerHTML=sorted.map(o=>{const d={steps:[],fix:[],exp:"",act:"",env:"",effort:"",risk:"",...detail[o.id]},t=top3.includes(o.id);return `<details class="${t?"top":""}"${t?" open":""}><summary><span class="num">${o.id}</span><span class="ttl">${o.t}<small><span class="tag">${ic(o.l)}${o.ln}</span>${sevTag(o)}<span>ICE ${o.ice}</span><span>${o.x=="gap"?L.gap:L.bug}</span><span>${d.effort}</span>${evTag(o)}</small></span><span class="arr" aria-hidden="true">▾</span></summary><div class="pbody"><div><h4>${L.repro}</h4><ol>${d.steps.map(s=>`<li>${s}</li>`).join("")}</ol><dl class="facts"><dt>${L.exp}</dt><dd>${d.exp}</dd><dt>${L.act}</dt><dd>${d.act}</dd>${d.env?`<dt>${L.env}</dt><dd>${d.env}</dd>`:""}</dl>${evidHtml(d.evid)}</div><div><h4>${L.fix}</h4><ol>${d.fix.map(s=>`<li>${s}</li>`).join("")}</ol><dl class="facts">${d.test?`<dt>${L.retest}</dt><dd>${testName(d.test)}</dd>`:""}<dt>${L.effort}</dt><dd>${d.effort}</dd><dt>${L.risk}</dt><dd>${d.risk}</dd>${d.thr?`<dt>${L.thr}</dt><dd>${d.thr}</dd>`:""}</dl>${d.alt?`<h4>${L.alt}</h4><ul>${d.alt.map(s=>`<li>${s}</li>`).join("")}</ul>`:""}${d.pm?`<h4>${L.pm}</h4><p>${d.pm}</p>`:""}</div></div></details>`}).join("");
+const tg=document.getElementById("toggleAll");
+tg.addEventListener("click",()=>{const open=tg.getAttribute("aria-pressed")!="true";document.querySelectorAll("#planList details").forEach(d=>d.open=open);tg.setAttribute("aria-pressed",open);tg.textContent=open?L.collapse:L.expand});
+const MK={pass:"",warn:"p",fail:"n",nc:"x"};
+if(!checklist.length)document.getElementById("checklist").remove();else{
+ document.getElementById("seg").style.gridTemplateColumns=`repeat(${checklist.length},minmax(0,1fr))`;
+ document.getElementById("seg").innerHTML=checklist.map(c=>`<i class="${MK[c.st]}" title="${c.t}"></i>`).join("");
+ document.getElementById("checks").innerHTML=checklist.map(c=>`<div class="chk"><span class="mk ${MK[c.st]}" aria-hidden="true"></span><span>${c.t} — <b class="st-${c.st=="pass"?"ok":c.st=="fail"?"no":"pend"}">${L.st[c.st]}</b>${c.note?`<small>${c.note}</small>`:""}</span></div>`).join("")}
+const AR=Object.fromEntries(areas.map(a=>[a.i,a.n||a.k]));
+if(!tests.length)document.getElementById("tests").remove();else{
+ tb2.innerHTML=tests.map(t=>`<tr><td><code>${t.id}</code></td><td>${t.t}</td><td><span class="tag">${ic(t.area)}${AR[t.area]||t.area}</span></td><td><span class="tst ${t.st}">${L.st[t.st]||t.st}</span></td></tr>`).join("");
+ const c=T.testsCmd;if(c)document.getElementById("cmd").textContent=RAW.text.testsCmd;else document.getElementById("cmd").remove()}
+document.getElementById("src").innerHTML=sources.map(s=>`<span>${s[0]}</span><span class="st-${s[2]}">${s[1]}</span>`).join("");
+const cb=document.getElementById("confBar");cb.style.width=conf+"%";cb.className=conf<40?"low":conf<70?"mid":"";
+document.getElementById("confNum").textContent=conf+"%";
+const GL={};Object.entries(RAW.glossary||{}).forEach(([k,v])=>GL[k]={g:esc(v.g),d:esc(v.d)});
+const keys=Object.keys(GL).sort((a,b)=>b.length-a.length);
+const rx=keys.length?new RegExp("(?<![A-Za-zА-Яа-яІіЇїЄєҐґ0-9])("+keys.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")(?![A-Za-zА-Яа-яІіЇїЄєҐґ0-9])","g"):null;
+const wrapTerms=root=>{if(!rx)return;root.querySelectorAll("p,li,td,dd,h3,.lab,.ttl").forEach(el=>{if(el.closest("nav,svg,.chips,#tip,.gloss,summary .tag,pre"))return;const seen=new Set();const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentElement.closest(".t,code,svg,button,pre")?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});const nodes=[];while(w.nextNode())nodes.push(w.currentNode);nodes.forEach(n=>{const s=n.nodeValue;rx.lastIndex=0;if(!rx.test(s))return;rx.lastIndex=0;const f=document.createDocumentFragment();let last=0,m;while(m=rx.exec(s)){const k=m[1];if(seen.has(k))continue;seen.add(k);f.append(s.slice(last,m.index));const b=document.createElement("button");b.className="t";b.type="button";b.dataset.k=k;b.textContent=k;f.append(b);last=m.index+k.length}if(last){f.append(s.slice(last));n.replaceWith(f)}})})};
+wrapTerms(document.body);
+wrapCells();
+document.getElementById("gloss").innerHTML=Object.keys(GL).sort((a,b)=>a.localeCompare(b)).map(k=>`<dt>${esc(k)}</dt><dd>${GL[k].d}</dd>`).join("");
+const tip=document.getElementById("tip");let tipFor=null,y0=0;
+const showTip=b=>{const k=b.dataset.k;tip.innerHTML=`<b>${esc(k)} — ${GL[k].g}</b>${GL[k].d}`;tip.style.display="block";const r=b.getBoundingClientRect(),tw=tip.offsetWidth,th=tip.offsetHeight;let x=Math.min(Math.max(16,r.left),innerWidth-tw-16),y=r.bottom+8;if(y+th>innerHeight-8)y=r.top-th-8;tip.style.left=x+"px";tip.style.top=y+"px";tipFor=b;y0=scrollY;b.setAttribute("aria-describedby","tip")};
+const hideTip=()=>{tip.style.display="none";if(tipFor)tipFor.removeAttribute("aria-describedby");tipFor=null};
+document.addEventListener("click",e=>{const b=e.target.closest(".t");if(b){e.preventDefault();e.stopPropagation();(tipFor===b&&!matchMedia("(hover:hover) and (pointer:fine)").matches)?hideTip():showTip(b)}else hideTip()});
+document.addEventListener("mouseover",e=>{const b=e.target.closest(".t");if(b&&matchMedia("(hover:hover) and (pointer:fine)").matches)showTip(b)});
+document.addEventListener("mouseout",e=>{const b=e.target.closest(".t");if(b&&matchMedia("(hover:hover) and (pointer:fine)").matches&&!b.contains(e.relatedTarget))hideTip()});
+document.addEventListener("focusin",e=>{const b=e.target.closest(".t");if(b&&b.matches(":focus-visible"))showTip(b);else if(!b)hideTip()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")hideTip()});
+addEventListener("scroll",()=>{if(tipFor&&Math.abs(scrollY-y0)>40)hideTip()},{passive:true});
+
+const rd=document.getElementById("radar");
+const drawRadar=()=>{const W=rd.clientWidth,H=rd.clientHeight,cx=W/2,cy=H/2,R=Math.min(W,H)/2-(W<420?44:62),N=areas.length;if(!N)return;
+ const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/N;return[cx+Math.cos(a)*r,cy+Math.sin(a)*r]};
+ let s="";[25,50,75,100].forEach(v=>{s+=`<polygon points="${areas.map((_,i)=>pt(i,R*v/100).join(",")).join(" ")}" fill="none" stroke="var(--line)"/>`});
+ areas.forEach((_,i)=>{const[x,y]=pt(i,R);s+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--line)"/>`});
+ s+=`<polygon points="${areas.map((l,i)=>pt(i,R*(l.s||0)/100).join(",")).join(" ")}" fill="var(--ink)" fill-opacity=".12" stroke="var(--ink)" stroke-width="2"/>`;
+ areas.forEach((l,i)=>{const nd=l.s==null,[x,y]=pt(i,R*(l.s||0)/100);s+=nd?`<circle cx="${x}" cy="${y}" r="5" fill="var(--bg)" stroke="var(--mute)" stroke-dasharray="2 2"/>`:`<circle cx="${x}" cy="${y}" r="${l.s<40?6:4}" fill="${l.s<40?"var(--red)":"var(--ink)"}"/>`;
+  const[lx,ly]=pt(i,R+16);const anc=Math.abs(lx-cx)<8?"middle":lx>cx?"start":"end";
+  s+=`<text x="${lx}" y="${ly+4}" text-anchor="${anc}" fill="${!nd&&l.s<40?"var(--red)":"var(--mute)"}" font-weight="${!nd&&l.s<40?700:400}">${l.k}${nd?" —":""}</text>`});
+ s+=`<text x="${cx}" y="${cy-R*.25-4}" text-anchor="middle" fill="var(--mute)">25</text><text x="${cx}" y="${cy-R*.75-4}" text-anchor="middle" fill="var(--mute)">75</text>`;
+ rd.innerHTML=`<svg>${s}</svg>`};
+new ResizeObserver(drawRadar).observe(rd);
+const mx=document.getElementById("mx");
+const drawMx=()=>{const W=mx.clientWidth,H=mx.clientHeight,m={l:48,r:16,t:16,b:44},pw=W-m.l-m.r,ph=H-m.t-m.b;
+ const X=e=>m.l+(e-.5)/10*pw,Y=i=>m.t+ph-(i-.5)/10*ph,midX=X(5.5),midY=Y(5.5);
+ let s=`<rect x="${m.l}" y="${m.t}" width="${midX-m.l}" height="${midY-m.t}" fill="var(--red)" fill-opacity=".08"/>`;
+ s+=`<line x1="${midX}" y1="${m.t}" x2="${midX}" y2="${m.t+ph}" stroke="var(--mute)" stroke-dasharray="4 4"/><line x1="${m.l}" y1="${midY}" x2="${m.l+pw}" y2="${midY}" stroke="var(--mute)" stroke-dasharray="4 4"/>`;
+ s+=`<line x1="${m.l}" y1="${m.t+ph}" x2="${m.l+pw}" y2="${m.t+ph}" stroke="var(--ink)"/><line x1="${m.l}" y1="${m.t}" x2="${m.l}" y2="${m.t+ph}" stroke="var(--ink)"/>`;
+ [[L.qWin,m.l+8,m.t+18,"start","var(--red)"],[L.qBig,m.l+pw-8,m.t+18,"end","var(--mute)"],[L.qSmall,m.l+8,m.t+ph-10,"start","var(--mute)"],[L.qPit,m.l+pw-8,m.t+ph-10,"end","var(--mute)"]].forEach(a=>s+=`<text x="${a[1]}" y="${a[2]}" text-anchor="${a[3]}" fill="${a[4]}" font-weight="700">${a[0]}</text>`);
+ s+=`<text x="${m.l+pw/2}" y="${H-10}" text-anchor="middle" fill="var(--mute)">${L.axE}</text><text transform="translate(16 ${m.t+ph/2}) rotate(-90)" text-anchor="middle" fill="var(--mute)">${L.axI}</text>`;
+ const r=W<520?11:14,grp={};bugs.forEach(o=>(grp[o.eff+"_"+o.I]=grp[o.eff+"_"+o.I]||[]).push(o.id));
+ bugs.forEach(o=>{const g=grp[o.eff+"_"+o.I],j=g.indexOf(o.id),a=g.length>1?2*Math.PI*j/g.length-Math.PI/2:0,sp=g.length>1?r*1.15:0,x=X(o.eff)+Math.cos(a)*sp,y=Y(o.I)+Math.sin(a)*sp,gp=o.x=="gap",hot=top3.includes(o.id);
+  s+=`<circle cx="${x}" cy="${y}" r="${r}" fill="${gp?"var(--bg)":hot?"var(--red)":"var(--ink)"}" stroke="${gp?"var(--red)":"none"}" stroke-width="2.5"/><text x="${x}" y="${y+4.5}" text-anchor="middle" fill="${gp?"var(--red)":"var(--bg)"}" style="stroke:none" font-weight="700">${o.id}</text>`});
+ mx.innerHTML=`<svg>${s}</svg>`};
+new ResizeObserver(drawMx).observe(mx);
+}
+</script>
+</body>
+
+</html>

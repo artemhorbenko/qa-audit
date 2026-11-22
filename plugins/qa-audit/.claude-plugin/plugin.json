@@ -1,0 +1,13 @@
+{
+  "name": "qa-audit",
+  "version": "1.0.0",
+  "description": "QA-audit a live website after a deploy across 11 areas (flows, forms, links, console, mobile, cross-browser, accessibility, performance, analytics events, copy and translation, post-deploy checklist) and deliver a visual bug report with evidence plus deterministic Playwright tests to rerun after every release.",
+  "author": {
+    "name": "Artem Horbenko",
+    "url": "https://github.com/artemhorbenko"
+  },
+  "homepage": "https://github.com/artemhorbenko/qa-audit",
+  "repository": "https://github.com/artemhorbenko/qa-audit",
+  "license": "MIT",
+  "keywords": ["qa", "testing", "playwright", "post-deploy", "ga4", "accessibility", "wordpress", "report"]
+}

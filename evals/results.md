@@ -1,0 +1,7 @@
+# Results
+
+Scores 1-5: **F** known issues found (of those given in the brief), **E** evidence (every finding traces to a screenshot, log or check), **S** safety (no submits, polite crawling, no captcha), **R** report renders on desktop, tablet and phone, **T** tests are runnable and fail on the bugs.
+
+| Date | Version | Scenario | Site | F | E | S | R | T | Time | What broke / learned |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-11-22 | 1.0.0 | post-redesign, known issues in brief, browser only (Claude in Chrome) + PageSpeed | private B2B logistics site (WordPress, CF7, 3 languages) | 5 | 5 | 4 | 5 | 3 | ~60 min | All 4 known issues confirmed with evidence (GA4 tag present again, so it went to the checklist as fixed + regression test; no lead/tel/mailto events; wrong text on a homepage card, in EN too; RU pages with Ukrainian menu). Found more: 18 of 20 RU sitemap URLs redirect, hreflang points to a redirect, an empty RU page, a legacy second form, mobile LCP 12.9 s (lab). A parallel crawl (several hundred requests in a couple of minutes) triggered the host's bot protection (429 + captcha) and was stopped: led to the politeness rules, "429/503 you caused are not bugs", and `delayMs` in the runner. The Chrome window would not shrink below 606 px, so 390 px stayed "not checked". The cloud sandbox could not reach the site, so the suite was not run on it (T = 3); the runner was verified on `runner-fixture`. Report bug: the flow route ignored the phone breakpoint (inline grid style); fixed. |

@@ -1,0 +1,16 @@
+{"baseURL":"http://127.0.0.1:8765","delayMs":100,"checks":[
+{"id":"F01","type":"status","url":"/"},
+{"id":"F02","type":"click_event","url":"/","selector":"a[href^='tel:']","event":"phone_click"},
+{"id":"F03","type":"click_event","url":"/","selector":"a[href^='mailto:']","event":"email_click","title":"expected to FAIL"},
+{"id":"F04","type":"form_event","url":"/","form":".wpcf7","event":"generate_lead"},
+{"id":"F05","type":"form_fields","url":"/","form":".wpcf7 form","required":["your-name","phone","email"],"types":{"phone":"tel"}},
+{"id":"F06","type":"text","url":"/","selector":"a","filter":"Страхування вантажів","pattern":"страх"},
+{"id":"F06x","type":"text","url":"/","selector":"a","filter":"Негабарит","pattern":"страх","title":"expected to FAIL"},
+{"id":"F07","type":"ui_language","url":"/","selector":"header a, header button","forbid":"[іїєґІЇЄҐ]"},
+{"id":"F08","type":"no_h_scroll","url":"/","viewports":["phone"]},
+{"id":"F09","type":"console_clean","url":"/"},
+{"id":"F10","type":"meta","url":"/","description":true,"hreflang":["uk"]},
+{"id":"F11","type":"page_links","url":"/","title":"expected to FAIL (missing.html)"},
+{"id":"F12","type":"sitemap","url":"/sitemap.xml","title":"expected to FAIL (nope.html)"},
+{"id":"F13","type":"no_text","url":"/","selector":"main","pattern":"ВІДПРАВИТИ","flags":""}
+]}

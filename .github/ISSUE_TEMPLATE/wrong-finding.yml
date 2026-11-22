@@ -1,0 +1,30 @@
+name: Wrong or weak finding
+description: The audit reported a false bug, missed a real one, or gave a vague fix
+labels: ["analysis"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of problem
+      options:
+        - False positive (reported bug is not a bug)
+        - Missed a real bug
+        - Evidence is missing or does not show the bug
+        - Wrong severity
+        - Fix is vague, not specific to the site
+        - Broke a safety rule (submitted a form, crawled too fast, etc.)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: Quote the finding and say what is wrong. What should it have said?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Site type and tools available
+      description: "e.g. WordPress + CF7, Claude in Chrome only, no CMS connector. No private data, please."

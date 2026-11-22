@@ -1,0 +1,21 @@
+name: New test check type
+description: Suggest a check the Playwright runner should support
+labels: ["tests"]
+body:
+  - type: input
+    id: what
+    attributes:
+      label: What should it check
+      placeholder: "e.g. WooCommerce add-to-cart works without checkout; cookie banner hides before consent"
+    validations:
+      required: true
+  - type: textarea
+    id: how
+    attributes:
+      label: How to check it without side effects
+      description: Which DOM state, request or event proves it. Remember the runner never submits forms or pays.
+  - type: textarea
+    id: example
+    attributes:
+      label: Example suite entry
+      render: json

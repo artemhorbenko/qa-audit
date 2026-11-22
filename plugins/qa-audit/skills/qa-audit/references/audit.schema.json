@@ -1,0 +1,672 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "qa-audit report data",
+ "type": "object",
+ "required": [
+  "lang",
+  "text",
+  "areas",
+  "bugs",
+  "detail",
+  "plans",
+  "sources"
+ ],
+ "properties": {
+  "lang": {
+   "type": "string",
+   "enum": [
+    "uk",
+    "en"
+   ],
+   "description": "Report language; picks interface labels."
+  },
+  "title": {
+   "type": "string",
+   "description": "Browser tab title."
+  },
+  "target": {
+   "type": "object",
+   "properties": {
+    "url": {
+     "type": "string"
+    },
+    "env": {
+     "type": "string"
+    },
+    "deploy": {
+     "type": "string"
+    },
+    "date": {
+     "type": "string"
+    }
+   }
+  },
+  "text": {
+   "type": "object",
+   "description": "Report's own words. Tokens {health} {checks} {passed} {failed} {warned} {crit} {qw} {n} {tests} {nc} {conf}; [[words]] turn red. Missing key = element removed.",
+   "properties": {
+    "label": {
+     "type": "string"
+    },
+    "headline": {
+     "type": "string"
+    },
+    "lead": {
+     "type": "string"
+    },
+    "areasNote": {
+     "type": "string"
+    },
+    "areasH": {
+     "type": "string"
+    },
+    "areasP": {
+     "type": "string"
+    },
+    "flowsH": {
+     "type": "string"
+    },
+    "flowsP": {
+     "type": "string"
+    },
+    "matrixH": {
+     "type": "string"
+    },
+    "matrixP": {
+     "type": "string"
+    },
+    "bugsH": {
+     "type": "string"
+    },
+    "bugsP": {
+     "type": "string"
+    },
+    "nextH": {
+     "type": "string"
+    },
+    "nextP": {
+     "type": "string"
+    },
+    "planH": {
+     "type": "string"
+    },
+    "planP": {
+     "type": "string"
+    },
+    "checkH": {
+     "type": "string"
+    },
+    "checkP": {
+     "type": "string"
+    },
+    "testsH": {
+     "type": "string"
+    },
+    "testsP": {
+     "type": "string"
+    },
+    "testsCmd": {
+     "type": "string"
+    },
+    "dataH": {
+     "type": "string"
+    },
+    "dataP": {
+     "type": "string"
+    },
+    "footer": {
+     "type": "string"
+    },
+    "how": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "kpis": {
+   "type": "array",
+   "maxItems": 4,
+   "items": {
+    "type": "object",
+    "required": [
+     "v",
+     "l"
+    ],
+    "properties": {
+     "v": {
+      "type": "string"
+     },
+     "l": {
+      "type": "string"
+     },
+     "hot": {
+      "type": "boolean"
+     },
+     "src": {
+      "type": "string",
+      "description": "Source name; required for literal numbers."
+     }
+    }
+   }
+  },
+  "verdict": {
+   "type": "object",
+   "required": [
+    "cur",
+    "note"
+   ],
+   "properties": {
+    "cur": {
+     "type": "integer",
+     "minimum": 0,
+     "maximum": 3,
+     "description": "0 blocks release, 1 fix before next deploy, 2 fix in backlog, 3 ready"
+    },
+    "note": {
+     "type": "string"
+    }
+   }
+  },
+  "areas": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "k",
+     "i",
+     "g",
+     "s"
+    ],
+    "properties": {
+     "k": {
+      "type": "string",
+      "description": "Short label on the radar."
+     },
+     "n": {
+      "type": "string",
+      "description": "Longer name."
+     },
+     "i": {
+      "type": "string",
+      "enum": [
+       "flows",
+       "forms",
+       "links",
+       "errors",
+       "mobile",
+       "browsers",
+       "a11y",
+       "perf",
+       "analytics",
+       "copy",
+       "deploy"
+      ]
+     },
+     "g": {
+      "type": "string",
+      "enum": [
+       "works",
+       "looks",
+       "health",
+       "measure"
+      ]
+     },
+     "s": {
+      "type": [
+       "number",
+       "null"
+      ],
+      "minimum": 0,
+      "maximum": 100,
+      "description": "null = not checked"
+     },
+     "pass": {
+      "type": "integer",
+      "minimum": 0
+     },
+     "fail": {
+      "type": "integer",
+      "minimum": 0
+     },
+     "warn": {
+      "type": "integer",
+      "minimum": 0
+     },
+     "sub": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "route": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "t",
+     "st"
+    ],
+    "properties": {
+     "t": {
+      "type": "string"
+     },
+     "w": {
+      "type": "string"
+     },
+     "st": {
+      "type": "string",
+      "enum": [
+       "ok",
+       "warn",
+       "bad"
+      ]
+     },
+     "p": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "bugs": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "required": [
+     "t",
+     "l",
+     "ln",
+     "x",
+     "sev",
+     "ev",
+     "I",
+     "C",
+     "E"
+    ],
+    "properties": {
+     "t": {
+      "type": "string"
+     },
+     "l": {
+      "type": "string",
+      "enum": [
+       "flows",
+       "forms",
+       "links",
+       "errors",
+       "mobile",
+       "browsers",
+       "a11y",
+       "perf",
+       "analytics",
+       "copy",
+       "deploy"
+      ]
+     },
+     "ln": {
+      "type": "string"
+     },
+     "x": {
+      "type": "string",
+      "enum": [
+       "bug",
+       "gap"
+      ]
+     },
+     "sev": {
+      "type": "string",
+      "enum": [
+       "blocker",
+       "critical",
+       "major",
+       "minor",
+       "trivial"
+      ]
+     },
+     "ev": {
+      "type": "string",
+      "enum": [
+       "obs",
+       "hyp"
+      ]
+     },
+     "I": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+     },
+     "C": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+     },
+     "E": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+     }
+    }
+   }
+  },
+  "detail": {
+   "type": "object",
+   "description": "Keyed by bug id (1-based position as string).",
+   "additionalProperties": {
+    "type": "object",
+    "required": [
+     "steps",
+     "exp",
+     "act",
+     "fix",
+     "effort",
+     "risk"
+    ],
+    "properties": {
+     "steps": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+       "type": "string"
+      }
+     },
+     "exp": {
+      "type": "string"
+     },
+     "act": {
+      "type": "string"
+     },
+     "env": {
+      "type": "string"
+     },
+     "evid": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "k"
+       ],
+       "properties": {
+        "k": {
+         "type": "string",
+         "enum": [
+          "shot",
+          "log",
+          "console",
+          "network",
+          "dom",
+          "psi",
+          "axe"
+         ]
+        },
+        "src": {
+         "type": "string",
+         "description": "Relative image path, e.g. shots/01.jpg"
+        },
+        "t": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "fix": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "test": {
+      "type": "string"
+     },
+     "effort": {
+      "type": "string"
+     },
+     "risk": {
+      "type": "string"
+     },
+     "alt": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "thr": {
+      "type": "string"
+     },
+     "pm": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "plans": {
+   "type": "object",
+   "description": "Top 3 only, keyed by bug id.",
+   "additionalProperties": {
+    "type": "object",
+    "required": [
+     "h",
+     "m",
+     "t"
+    ],
+    "properties": {
+     "h": {
+      "type": "string",
+      "description": "What is broken"
+     },
+     "m": {
+      "type": "string",
+      "description": "Done when"
+     },
+     "t": {
+      "type": "string",
+      "description": "How to verify"
+     }
+    }
+   }
+  },
+  "checklist": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "t",
+     "st"
+    ],
+    "properties": {
+     "t": {
+      "type": "string"
+     },
+     "st": {
+      "type": "string",
+      "enum": [
+       "pass",
+       "warn",
+       "fail",
+       "nc"
+      ]
+     },
+     "note": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "tests": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "t",
+     "area",
+     "st"
+    ],
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "t": {
+      "type": "string"
+     },
+     "area": {
+      "type": "string",
+      "enum": [
+       "flows",
+       "forms",
+       "links",
+       "errors",
+       "mobile",
+       "browsers",
+       "a11y",
+       "perf",
+       "analytics",
+       "copy",
+       "deploy"
+      ]
+     },
+     "st": {
+      "type": "string",
+      "enum": [
+       "pass",
+       "fail",
+       "new",
+       "nc"
+      ]
+     }
+    }
+   }
+  },
+  "suite": {
+   "type": "object",
+   "required": [
+    "baseURL",
+    "checks"
+   ],
+   "properties": {
+    "baseURL": {
+     "type": "string"
+    },
+    "locale": {
+     "type": "string"
+    },
+    "delayMs": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "ignoreUrls": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "viewports": {
+     "type": "object"
+    },
+    "checks": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "id",
+       "type"
+      ],
+      "properties": {
+       "id": {
+        "type": "string"
+       },
+       "type": {
+        "type": "string",
+        "enum": [
+         "status",
+         "redirect",
+         "ga4_tag",
+         "click_event",
+         "form_event",
+         "form_fields",
+         "text",
+         "no_text",
+         "ui_language",
+         "console_clean",
+         "no_h_scroll",
+         "page_links",
+         "sitemap",
+         "axe",
+         "meta"
+        ]
+       }
+      }
+     }
+    }
+   }
+  },
+  "answers": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "q",
+     "a"
+    ],
+    "properties": {
+     "q": {
+      "type": "string"
+     },
+     "a": {
+      "type": "string"
+     },
+     "skipped": {
+      "type": "boolean"
+     }
+    }
+   }
+  },
+  "sources": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "required": [
+     "name",
+     "note",
+     "status"
+    ],
+    "properties": {
+     "name": {
+      "type": "string"
+     },
+     "note": {
+      "type": "string"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "ok",
+       "demo",
+       "no"
+      ]
+     }
+    }
+   }
+  },
+  "glossary": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "object",
+    "required": [
+     "g",
+     "d"
+    ],
+    "properties": {
+     "g": {
+      "type": "string"
+     },
+     "d": {
+      "type": "string"
+     }
+    }
+   }
+  }
+ }
+}

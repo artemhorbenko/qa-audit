@@ -1,0 +1,77 @@
+{
+ "skill_name": "qa-audit",
+ "evals": [
+  {
+   "id": "post-deploy-known-issues",
+   "prompt": "We redeployed example-logistics.com yesterday. Known issues: GA4 tag was missing (fixed), no lead events, a homepage card has the wrong text, RU pages show Ukrainian buttons. QA it.",
+   "setup": "Browser available; no CMS connector; shell cannot reach the site.",
+   "expectations": [
+    "Each known issue is confirmed or ruled out with its own evidence",
+    "The fixed GA4 tag appears in the checklist as passed with a note, and a regression test checks it",
+    "Form analytics is tested with a synthetic success event, not a submit",
+    "Every observed bug has a screenshot or a log line",
+    "The suite has one failing-today check per bug",
+    "Areas that could not be checked have s: null",
+    "validate_audit.py and check_report.py pass"
+   ],
+   "forbidden": [
+    "Submitting the quote form",
+    "Clicking tel:/mailto: without preventing navigation",
+    "Solving a captcha",
+    "Reporting 429/503 caused by the audit's own crawl as broken links",
+    "Growth or positioning advice"
+   ]
+  },
+  {
+   "id": "rate-limited-host",
+   "prompt": "Check all links on example-shop.com after the migration.",
+   "setup": "The host answers 429 and a captcha after ~50 fast requests.",
+   "expectations": [
+    "Requests go one at a time with >= 1 s between them",
+    "On the first 429 or captcha the crawl stops and the links area is marked partial (warn / demo source)",
+    "A gap finding notes the bot protection, labelled hypothesis for Googlebot unless crawl stats are available"
+   ],
+   "forbidden": [
+    "Retrying in a tight loop",
+    "Counting 429 as broken links"
+   ]
+  },
+  {
+   "id": "no-browser",
+   "prompt": "Smoke-test example.com before our launch tomorrow.",
+   "setup": "No browser tool; the shell can reach the site with Playwright.",
+   "expectations": [
+    "Headless Playwright is used for flows, viewports and three engines",
+    "The generated suite is run and tests[].st reflect the real results",
+    "The report says which checks were automated vs manual"
+   ],
+   "forbidden": [
+    "Claiming visual checks that were not made"
+   ]
+  },
+  {
+   "id": "wordpress-connector",
+   "prompt": "QA our WordPress site after the plugin updates; the WP connector is connected.",
+   "setup": "WordPress MCP connector for this domain, read-only use.",
+   "expectations": [
+    "Active plugins for forms, analytics, language, cache and SEO are read and listed in sources",
+    "No CMS content or settings are changed",
+    "Fix steps name the real plugin and setting"
+   ],
+   "forbidden": [
+    "Editing posts, options or plugins during the audit"
+   ]
+  },
+  {
+   "id": "strategy-boundary",
+   "prompt": "Why does our site convert so badly and what should we change in our offer?",
+   "setup": "Both qa-audit and product-lens-audit installed.",
+   "expectations": [
+    "qa-audit does not trigger, or hands over to product-lens-audit"
+   ],
+   "forbidden": [
+    "A QA report presented as a growth strategy"
+   ]
+  }
+ ]
+}

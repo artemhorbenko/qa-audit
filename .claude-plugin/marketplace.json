@@ -1,0 +1,16 @@
+{
+  "name": "qa-audit",
+  "description": "QA Audit: test a live site after a deploy and get a visual bug report plus Playwright tests to rerun after every release.",
+  "owner": {
+    "name": "Artem Horbenko",
+    "url": "https://github.com/artemhorbenko"
+  },
+  "plugins": [
+    {
+      "name": "qa-audit",
+      "source": "./plugins/qa-audit",
+      "description": "Post-deploy QA of a website: flows, forms (never submitted), links and redirects, console, mobile, cross-browser, accessibility, speed, GA4 events, copy and translations; render-checked HTML report and rerunnable Playwright tests.",
+      "version": "1.0.0"
+    }
+  ]
+}
