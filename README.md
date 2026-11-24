@@ -134,6 +134,10 @@ docs/                                screenshots
 qa-audit-skill.zip                   the skill packaged for the Claude app
 ```
 
+## Roadmap
+
+Planned next: a second, plain **hand-off file for AI agents** (`qa-handoff.md`) next to the human report, so the fixes can be passed straight to a coding agent. See [ROADMAP.md](ROADMAP.md).
+
 ## License
 
 MIT - see [LICENSE](LICENSE).
@@ -166,5 +170,7 @@ MIT - see [LICENSE](LICENSE).
 ```
 
 Для Claude app завантажте ZIP ([пряме завантаження](https://github.com/artemhorbenko/qa-audit/raw/main/qa-audit-skill.zip)), потім **Customize → Skills → + → Create skill → Upload a skill**.
+
+**План:** другий вихід, технічний `qa-handoff.md` для AI-агентів (без дизайну, з чіткою структурою), щоб передати фікси агенту на реалізацію. Деталі в [ROADMAP.md](ROADMAP.md).
 
 Запуск тестів після деплою: `cd qa-tests && npm install && npx playwright install chromium && npx playwright test`.
