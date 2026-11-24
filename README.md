@@ -1,10 +1,11 @@
 # QA Audit
 
-A Claude skill that QA-tests a live website after a deploy or redesign and hands back three things:
+A Claude skill that QA-tests a live website after a deploy or redesign and hands back four things:
 
-1. **A visual report**: a release verdict, checks passed vs failed in each of 11 areas, the flows that break, and a ranked bug list.
+1. **A visual report for people**: a release verdict, checks passed vs failed in each of 11 areas, the flows that break, and a ranked bug list.
 2. **A bug list** with steps to reproduce, expected and actual results, environment, and screenshot or log evidence for each bug.
-3. **Deterministic Playwright tests** to rerun after every deploy. They never submit forms.
+3. **A hand-off file for AI agents** (`qa-handoff.md`): the same bugs as plain tasks with exact locations, fix code, who has to act and the test that proves each fix, ready to give to Claude Code, Cursor or Codex. [Example](docs/example-qa-handoff.md).
+4. **Deterministic Playwright tests** to rerun after every deploy. They never submit forms and never send events to your analytics.
 
 **Live demo:** [English report](https://claude.ai/artifact/4mXJrvNQ9Mb5NGobzLibgs) (fictional site "Harbourline Cargo", made-up data).
 
@@ -36,6 +37,7 @@ The report has the same design as [product-lens-audit](https://github.com/artemh
 - **Top 3 fixes** with the fix options considered, a done-when threshold and a pre-mortem.
 - **A post-deploy checklist** and **a tests table** with the command to run them.
 - **Honest confidence**: which tools were used and which were missing.
+- **A hand-off for the coding agent**: YAML front matter (site, verdict, stack, not-checked areas) and tasks grouped by owner: *agent can do it in code*, *needs admin access* (CMS, GTM, GA4, hosting), *needs the owner's decision*. Each task has location, steps, expected and actual results, evidence, a fix with a code block, the done-when line and its `QA_ONLY=T07 npx playwright test` command.
 
 <p>
 <img src="docs/report-plan-en.png" alt="Bug with steps, expected/actual, evidence and fix" width="62%">
@@ -46,14 +48,15 @@ The report has the same design as [product-lens-audit](https://github.com/artemh
 
 1. **Checks the tools**: browser (Claude in Chrome, built-in or cloud), headless Playwright, PageSpeed Insights, a CMS connector, GA4. Each is marked used, partial or missing.
 2. **Asks up to 4 skippable questions**: what changed, the key flows, access, known issues. A detailed brief counts as the answers.
-3. **Runs the checks** area by area. For analytics, it wraps `dataLayer.push`, watches `/g/collect`, and fires the form's success event (for example `wpcf7mailsent`) in the browser, so nothing is sent to the server.
+3. **Runs the checks** area by area. For analytics, it wraps `dataLayer.push`, blocks analytics requests, and fires the form's success event (`wpcf7mailsent`, Gravity Forms' `gform_confirmation_loaded`) in the browser, so nothing is sent to the server and no fake lead reaches GA4. It then closes the loop: it parses the published GTM container to compare triggers with what the page pushes, reads GA4 key events and counts, and reads Search Console's 5xx, 404 and robots reports (all read only).
 4. **Writes findings** with evidence, sets the verdict, and ranks them by severity × ICE.
 5. **Writes the test suite**: one check that fails today for each bug, plus regression checks.
-6. **Writes `audit.json` only.** Then it validates the data (`validate_audit.py`), builds the page and the tests (`build_report.py`), render-checks the page on desktop, tablet and phone (`check_report.py`), and fact-checks every number.
+6. **Writes `audit.json` only.** Then it validates the data (`validate_audit.py`), builds the page, the hand-off and the tests (`build_report.py`), render-checks the page on desktop, tablet and phone (`check_report.py`), and fact-checks every number.
 
 ### Safety rules
 
 - Never submits real forms, payments, sign-ups or messages, and does not open tel:/mailto: links.
+- Never sends synthetic events into production analytics: analytics and ad requests are blocked during checks and in every generated test.
 - Crawls politely: one request at a time, at least 1 s apart, about 60 pages at most. It stops on 429, 503 or a captcha, never solves the captcha, and never reports the 429/503 errors its own crawl caused as broken links.
 - Connected sources are used read-only.
 
@@ -70,7 +73,7 @@ BROWSERS=all npx playwright test    # + Firefox and WebKit
 QA_ONLY=T04,T05 npx playwright test # some checks only
 ```
 
-Check types: `status`, `redirect`, `ga4_tag`, `click_event`, `form_event`, `form_fields`, `text`, `no_text`, `ui_language`, `console_clean`, `no_h_scroll`, `page_links`, `sitemap`, `axe`, `meta`. If the host rate-limits or shows a captcha, the check is skipped as "not checked" rather than failed. See [references/test-suite.md](plugins/qa-audit/skills/qa-audit/references/test-suite.md).
+Check types: `status`, `redirect`, `ga4_tag`, `tag_present`, `click_event`, `form_event`, `form_fields`, `text`, `no_text`, `ui_language`, `console_clean`, `no_h_scroll`, `page_links`, `sitemap`, `robots_disallow`, `axe`, `meta`. If the host rate-limits or shows a captcha, the check is skipped as "not checked" rather than failed. See [references/test-suite.md](plugins/qa-audit/skills/qa-audit/references/test-suite.md).
 
 The checks are data, so the same runner can serve many sites (for example a QA service for WordPress sites that runs one `qa-suite.json` per site from a deploy hook).
 
@@ -102,7 +105,7 @@ Copy `plugins/qa-audit/skills/qa-audit/` into your agent's skills folder.
 ```
 S=plugins/qa-audit/skills/qa-audit
 python $S/scripts/validate_audit.py audit.json
-python $S/scripts/build_report.py audit.json out/index.html     # also writes out/qa-tests/
+python $S/scripts/build_report.py audit.json out/index.html     # also writes out/qa-handoff.md and out/qa-tests/
 pip install playwright && playwright install chromium
 python $S/scripts/check_report.py out/index.html --out ./report-check
 ```
@@ -121,22 +124,24 @@ plugins/qa-audit/
     references/data-sources.md       tools, recipes, politeness
     references/test-suite.md         check types of the test runner
     references/report-spec.md        report sections and data shapes
+    references/handoff-spec.md       the hand-off file for AI agents
     references/audit.schema.json     shape of audit.json
     assets/report-template.html      the report page; renders from one JSON block
     assets/example-audit.en.json     demo data (fictional), with assets/shots/
     assets/qa-tests/                 generic Playwright runner, config, README
     scripts/validate_audit.py        data and rule check
-    scripts/build_report.py          audit.json -> report + evidence + tests
+    scripts/build_report.py          audit.json -> report + evidence + hand-off + tests
+    scripts/build_handoff.py         audit.json -> qa-handoff.md only
     scripts/make_tests.py            audit.json -> qa-tests/ only
     scripts/check_report.py          headless render check
 evals/                               scenarios, trigger prompts, results log, runner fixture
-docs/                                screenshots
+docs/                                screenshots, example hand-off
 qa-audit-skill.zip                   the skill packaged for the Claude app
 ```
 
 ## Roadmap
 
-Planned next: a second, plain **hand-off file for AI agents** (`qa-handoff.md`) next to the human report, so the fixes can be passed straight to a coding agent. See [ROADMAP.md](ROADMAP.md).
+See [ROADMAP.md](ROADMAP.md). The hand-off file for AI agents shipped in 1.1.0.
 
 ## License
 
@@ -148,9 +153,10 @@ MIT - see [LICENSE](LICENSE).
 
 **QA Audit** — скіл для Claude, який після деплою чи редизайну тестує живий сайт і повертає три речі:
 
-1. **Візуальний звіт**: вердикт релізу, перевірки, пройдені й не пройдені в кожній з 11 областей, зламані сценарії та пріоритизований список багів.
+1. **Візуальний звіт для людей**: вердикт релізу, перевірки, пройдені й не пройдені в кожній з 11 областей, зламані сценарії та пріоритизований список багів.
 2. **Список багів**: кроки відтворення, очікуваний і фактичний результат, середовище, а також доказ — скріншот або лог.
-3. **Детерміновані Playwright-тести**, які можна запускати після кожного деплою. Форм вони не надсилають.
+3. **Hand-off для AI-агентів** (`qa-handoff.md`): ті самі баги як задачі без дизайну — точне місце, код фіксу, хто має діяти і тест, що доводить виправлення. Його можна одразу віддати Claude Code чи Cursor. [Приклад](docs/example-qa-handoff.md).
+4. **Детерміновані Playwright-тести**, які можна запускати після кожного деплою. Форм вони не надсилають і подій в аналітику не шлють.
 
 **Демо:** [звіт англійською](https://claude.ai/artifact/4mXJrvNQ9Mb5NGobzLibgs) (вигаданий сайт «Harbourline Cargo», умовні дані).
 
@@ -170,7 +176,5 @@ MIT - see [LICENSE](LICENSE).
 ```
 
 Для Claude app завантажте ZIP ([пряме завантаження](https://github.com/artemhorbenko/qa-audit/raw/main/qa-audit-skill.zip)), потім **Customize → Skills → + → Create skill → Upload a skill**.
-
-**План:** другий вихід, технічний `qa-handoff.md` для AI-агентів (без дизайну, з чіткою структурою), щоб передати фікси агенту на реалізацію. Деталі в [ROADMAP.md](ROADMAP.md).
 
 Запуск тестів після деплою: `cd qa-tests && npm install && npx playwright install chromium && npx playwright test`.

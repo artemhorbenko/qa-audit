@@ -31,9 +31,10 @@ Every check has `id` (stable: `T01`, `T02`, … - the report's `tests[].id` and 
 |---|---|---|
 | `status` | `url`, `expect` (200) | the page answers with that status |
 | `redirect` | `from`, `to` | opening `from` ends at path `to` |
-| `ga4_tag` | `url`, `measurementId` | the gtag script with that id is on the page and a `/g/collect` hit with `tid=` that id is sent |
+| `ga4_tag` | `url`, `measurementId` | the gtag script with that id is on the page and a `/g/collect` hit with `tid=` that id is generated (and aborted). Consent-mode "basic" sites send nothing before consent: use `tag_present` |
+| `tag_present` | `url`, `ids` ["GTM-…", "G-…"] | each id appears in a script src, inline script or loaded resource. `url` may be absolute to check another host |
 | `click_event` | `url`, `selector`, `event` | clicking the first visible match (tel:/mailto: navigation is prevented) pushes `event` to dataLayer or sends a GA4 hit with `en=event` |
-| `form_event` | `url`, `form`, `domEvent` (`wpcf7mailsent`), `event` | dispatching the synthetic DOM event on the form produces `event`. **No submit.** |
+| `form_event` | `url`, `form`, `event`, and either `domEvent` (default `wpcf7mailsent`, a DOM event on the form) or `jqueryEvent` + `jqueryArgs` (Gravity Forms: `gform_confirmation_loaded`, `[4]`) | the synthetic success signal produces `event` in dataLayer or in a (blocked) GA4 hit. **No submit.** |
 | `form_fields` | `url`, `form`, `required` [names], `types` {name: type} | each field exists, is required (`required` or `aria-required`), has the type |
 | `text` | `url`, `selector`, `filter`, `pattern` or `text`, `flags` | every element whose text contains `filter` has, in the rest of its text, a match for `pattern` (catches copy-paste in cards) |
 | `no_text` | `url`, `selector`, `pattern` or `text` | the text is not there |
@@ -43,9 +44,12 @@ Every check has `id` (stable: `T01`, `T02`, … - the report's `tests[].id` and 
 | `page_links` | `url`, `max`, `external` | links found on the page (same origin unless `external`) answer < 400, checked one by one |
 | `sitemap` | `url`, `max` | every URL in the sitemap (index followed) answers 200 without a redirect |
 | `axe` | `url`, `impact` | no axe violations of those impacts (needs `@axe-core/playwright`, in package.json) |
+| `robots_disallow` | `url` (/robots.txt), `agent`, `disallowed` [paths], `allowed` [paths] | robots.txt read as Google does (RFC 9309: the most specific user-agent group alone, longest rule wins) blocks / allows those paths for that agent |
 | `meta` | `url`, `description`, `title`, `hreflang` [codes], `lang` | those head tags exist |
 
 If the host answers 429/503 or shows a captcha, the check is **skipped** ("not checked"), not failed.
+
+Every check aborts requests to analytics and ad endpoints (GA4 `/g/collect`, Google Ads, DoubleClick, Meta, LinkedIn, Bing, HubSpot tracking) and only records their URLs, so a synthetic event never reaches production data.
 
 ## What to cover
 

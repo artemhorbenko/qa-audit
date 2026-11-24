@@ -1,5 +1,7 @@
 # Report specification
 
+Every run has two outputs from the same `audit.json`: this page for people, and `qa-handoff.md` for AI coding agents (see `handoff-spec.md`). `build_report.py` writes both.
+
 One self-contained HTML page plus a `shots/` folder. `assets/report-template.html` renders everything from one `<script type="application/json" id="audit">` block; you write only that JSON (`audit.schema.json`, example `assets/example-audit.en.json`). The look and code are shared with product-lens-audit, so the two reports read as one family.
 
 ## Look
@@ -30,8 +32,9 @@ Headings state their point ("Leads are not tracked"), not a topic ("Analytics").
 - `verdict`: `{cur: 0-3, note}`.
 - `areas`: 11 × `{k, n, i, g, s, pass, fail, warn, sub?}`; `s: null` and no counts = not checked.
 - `route`: `{t, w, st: ok|warn|bad, p}`.
-- `bugs`: `{t, l, ln, x: bug|gap, sev, ev: obs|hyp, I, C, E}`; ids are 1-based positions; `detail` and `plans` keyed by id string.
-- `detail[id]`: `{steps[], exp, act, env, evid[{k, src?, t?}], fix[], test, effort, risk, alt?, thr?, pm?}`. `src` is a relative path (`shots/01-name.jpg`).
+- `bugs`: `{t, l, ln, x: bug|gap, sev, ev: obs|hyp, I, C, E, where?}`; ids are 1-based positions; `detail` and `plans` keyed by id string.
+- `detail[id]`: `{steps[], exp, act, env, evid[{k, src?, t?}], fix[], test, effort, risk, alt?, thr?, pm?, owner?, code?, codeLang?}`. `owner`, `code` and `codeLang` feed the hand-off only.
+- `stack`: list of strings (detected platform, plugins, analytics); hand-off only. `src` is a relative path (`shots/01-name.jpg`).
 - `plans[id]` for the top 3: `{h: what is broken, m: done when, t: how to verify}`.
 - `checklist`: `{t, st: pass|warn|fail|nc, note}`; `tests`: `{id, t, area, st: pass|fail|new|nc}`; `suite`: see test-suite.md.
 - `answers`: `{q, a, skipped?}`; `sources`: `{name, note, status}`; `glossary`: `{term: {g, d}}`.

@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /public/
+Disallow: /admin
+Allow: /
+
+User-agent: Googlebot
+Allow: /api/v1/registrations/

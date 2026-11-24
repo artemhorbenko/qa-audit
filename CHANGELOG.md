@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0 - 2026-11-24
+
+- **Hand-off for AI agents.** Every run now also writes `qa-handoff.md`: YAML front matter (site, verdict, stack, not-checked areas, test command), rules for the agent, a task table, and tasks grouped by owner (`code` / `admin` / `decision`). Each task has location, reproduce steps, expected and actual results, evidence, fix steps, a suggested code block, the done-when line and its test. New `scripts/build_handoff.py`, `references/handoff-spec.md` and `docs/example-qa-handoff.md`; `build_report.py` writes it (`--no-handoff` to skip).
+- New optional `audit.json` fields for the hand-off: `bugs[].where`, `detail[].owner`, `detail[].code`, `detail[].codeLang`, top-level `stack`. The validator warns when a bug has no `where`.
+- **No synthetic events in production analytics.** The test runner aborts every analytics and ad request (GA4, Google Ads, DoubleClick, Meta, LinkedIn, Bing, HubSpot) and only records its URL. SKILL.md forbids granting consent in-page to watch a hit.
+- Runner: `form_event` supports jQuery events (Gravity Forms `gform_confirmation_loaded`); new checks `tag_present` (GTM/GA ids on a page, any host) and `robots_disallow` (robots.txt as Google reads it, RFC 9309).
+- SKILL.md: close the analytics loop by parsing the published GTM container, reading GA4 key events and counts, and reading Search Console's Pages report. Also check every host the flow touches.
+- Fix: `build_report.py` escaped `<!--` as `<\!--`, which is invalid JSON and blanked the report; now `<\u0021--`.
+
 ## 1.0.0 - 2026-11-22
 
 First public release.

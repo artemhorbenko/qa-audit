@@ -3,6 +3,7 @@
 {"id":"F02","type":"click_event","url":"/","selector":"a[href^='tel:']","event":"phone_click"},
 {"id":"F03","type":"click_event","url":"/","selector":"a[href^='mailto:']","event":"email_click","title":"expected to FAIL"},
 {"id":"F04","type":"form_event","url":"/","form":".wpcf7","event":"generate_lead"},
+{"id":"F04j","type":"form_event","url":"/gf.html","form":"#gform_4","jqueryEvent":"gform_confirmation_loaded","jqueryArgs":[4],"event":"gravity-form-success"},
 {"id":"F05","type":"form_fields","url":"/","form":".wpcf7 form","required":["your-name","phone","email"],"types":{"phone":"tel"}},
 {"id":"F06","type":"text","url":"/","selector":"a","filter":"Страхування вантажів","pattern":"страх"},
 {"id":"F06x","type":"text","url":"/","selector":"a","filter":"Негабарит","pattern":"страх","title":"expected to FAIL"},
@@ -12,5 +13,8 @@
 {"id":"F10","type":"meta","url":"/","description":true,"hreflang":["uk"]},
 {"id":"F11","type":"page_links","url":"/","title":"expected to FAIL (missing.html)"},
 {"id":"F12","type":"sitemap","url":"/sitemap.xml","title":"expected to FAIL (nope.html)"},
-{"id":"F13","type":"no_text","url":"/","selector":"main","pattern":"ВІДПРАВИТИ","flags":""}
+{"id":"F13","type":"no_text","url":"/","selector":"main","pattern":"ВІДПРАВИТИ","flags":""},
+{"id":"F14","type":"tag_present","url":"/","ids":["G-TEST123"]},
+{"id":"F15","type":"robots_disallow","agent":"Googlebot","disallowed":["/public/x","/admin"],"title":"expected to FAIL (Googlebot group overrides *)"},
+{"id":"F16","type":"robots_disallow","agent":"Bingbot","disallowed":["/public/x"],"allowed":["/blog"]}
 ]}

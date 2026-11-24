@@ -1,7 +1,7 @@
 {
   "name": "qa-audit",
-  "version": "1.0.0",
-  "description": "QA-audit a live website after a deploy across 11 areas (flows, forms, links, console, mobile, cross-browser, accessibility, performance, analytics events, copy and translation, post-deploy checklist) and deliver a visual bug report with evidence plus deterministic Playwright tests to rerun after every release.",
+  "version": "1.1.0",
+  "description": "QA-audit a live website after a deploy across 11 areas (flows, forms, links, console, mobile, cross-browser, accessibility, performance, analytics events, copy and translation, post-deploy checklist) and deliver a visual bug report with evidence, a hand-off file for AI coding agents and deterministic Playwright tests to rerun after every release.",
   "author": {
     "name": "Artem Horbenko",
     "url": "https://github.com/artemhorbenko"

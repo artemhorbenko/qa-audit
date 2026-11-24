@@ -10,7 +10,7 @@
       "name": "qa-audit",
       "source": "./plugins/qa-audit",
       "description": "Post-deploy QA of a website: flows, forms (never submitted), links and redirects, console, mobile, cross-browser, accessibility, speed, GA4 events, copy and translations; render-checked HTML report and rerunnable Playwright tests.",
-      "version": "1.0.0"
+      "version": "1.1.0"
     }
   ]
 }

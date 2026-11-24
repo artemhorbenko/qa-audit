@@ -346,6 +346,40 @@
       "type": "integer",
       "minimum": 1,
       "maximum": 10
+     },
+     "where": {
+      "description": "Exact location for the agent hand-off.",
+      "oneOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "object",
+        "properties": {
+         "url": {
+          "type": "string"
+         },
+         "selector": {
+          "type": "string"
+         },
+         "file": {
+          "type": "string"
+         },
+         "template": {
+          "type": "string"
+         },
+         "plugin": {
+          "type": "string"
+         },
+         "setting": {
+          "type": "string"
+         },
+         "tool": {
+          "type": "string"
+         }
+        }
+       }
+      ]
      }
     }
    }
@@ -435,6 +469,22 @@
       "type": "string"
      },
      "pm": {
+      "type": "string"
+     },
+     "owner": {
+      "type": "string",
+      "enum": [
+       "code",
+       "admin",
+       "decision"
+      ],
+      "description": "Who can act: the agent in code, someone with admin access, or the owner deciding."
+     },
+     "code": {
+      "type": "string",
+      "description": "Exact snippet, rule or config for the fix (hand-off only)."
+     },
+     "codeLang": {
       "type": "string"
      }
     }
@@ -593,7 +643,9 @@
          "page_links",
          "sitemap",
          "axe",
-         "meta"
+         "meta",
+         "tag_present",
+         "robots_disallow"
         ]
        }
       }
@@ -667,6 +719,13 @@
      }
     }
    }
+  },
+  "stack": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "description": "Detected platform, plugins, analytics; hand-off only."
   }
  }
 }

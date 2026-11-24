@@ -1,8 +1,10 @@
 # Roadmap
 
-Ideas and planned work. Nothing here is built yet.
+Ideas and planned work.
 
-## Two outputs: a report for people and a hand-off for AI agents
+## Done in 1.1.0: two outputs, a report for people and a hand-off for AI agents
+
+Shipped as `qa-handoff.md` (see `references/handoff-spec.md`). Still open from the plan below: `qa-handoff.json`, `--handoff-lang`, and the eval in which an agent fixes a fixture site from the hand-off alone.
 
 **Idea.** Every run produces two files from the same `audit.json`:
 
@@ -58,11 +60,11 @@ Risk: double counting if GTM is added later
 - Same language as the report by default; optional `--handoff-lang en`, since agents work well in English.
 
 **Build steps:**
-- [ ] `scripts/build_handoff.py audit.json out/qa-handoff.md`, called by `build_report.py` (flag `--no-handoff` to skip).
-- [ ] Add optional fields to `audit.json` that the hand-off needs and the report can ignore: `bugs[].where` (url/selector/template), `detail[].code` (patch snippet), `detail[].owner` (owner action needed), `stack` (detected CMS, plugins, analytics).
-- [ ] Validator: warn when a bug has no `where`; error when a fix in a hand-off has no test and no "done when".
+- [x] `scripts/build_handoff.py audit.json out/qa-handoff.md`, called by `build_report.py` (flag `--no-handoff` to skip).
+- [x] Add optional fields to `audit.json` that the hand-off needs and the report can ignore: `bugs[].where` (url/selector/template), `detail[].code` (patch snippet), `detail[].owner` (owner action needed), `stack` (detected CMS, plugins, analytics).
+- [x] Validator: warn when a bug has no `where`; error when a fix in a hand-off has no test and no "done when".
 - [ ] Optional `qa-handoff.json` (same content, strict schema) for agents and services that prefer JSON.
-- [ ] SKILL.md step 5: deliver both files, and in chat offer: "give `qa-handoff.md` to your coding agent".
+- [x] SKILL.md step 5: deliver both files, and in chat offer: "give `qa-handoff.md` to your coding agent".
 - [ ] Eval: an agent fixes a test fixture site from the hand-off alone (without the HTML report), then the suite passes.
 
 **Fits the WordPress QA service idea:** the hand-off is what a service would attach to a ticket or a PR, or pass straight to an agent that opens the PR, with the Playwright suite as the acceptance test.

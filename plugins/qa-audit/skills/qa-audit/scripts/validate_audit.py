@@ -24,7 +24,8 @@ TEXT_KEYS = ["headline", "lead", "areasH", "flowsH", "matrixH", "bugsH", "nextH"
 EVID_KINDS = {"shot", "log", "console", "network", "dom", "psi", "axe"}
 # check types the bundled runner (assets/qa-tests/qa.spec.js) understands
 SUITE_TYPES = {"status", "redirect", "ga4_tag", "click_event", "form_event", "form_fields", "text", "no_text",
-               "ui_language", "console_clean", "no_h_scroll", "page_links", "sitemap", "axe", "meta"}
+               "ui_language", "console_clean", "no_h_scroll", "page_links", "sitemap", "axe", "meta",
+               "tag_present", "robots_disallow"}
 
 
 def rank(o):
@@ -138,6 +139,10 @@ def validate(a, base="."):
                     E(f"detail[\"{oid}\"].evid[{j}].src '{src}' does not exist next to audit.json")
         if d.get("test") and tests and d["test"] not in tests:
             E(f"detail[\"{oid}\"].test '{d['test']}' is not in tests")
+        if not o.get("where"):
+            W(f"{p} has no where (url / selector / file / plugin / setting): the agent hand-off needs a location")
+        if d.get("owner") and d["owner"] not in ("code", "admin", "decision"):
+            E(f"detail[\"{oid}\"].owner must be code, admin or decision")
         if not d.get("test") and o.get("x") == "bug":
             W(f"{p} has no automated test: add one to the suite so the fix is checked after each deploy")
     for k in detail:
@@ -201,6 +206,9 @@ def validate(a, base="."):
     for i, q in enumerate(a.get("answers") or []):
         if not q.get("q") or not q.get("a"):
             E(f"answers[{i}] needs q and a (for a skipped question, a = the assumption taken)")
+    st = a.get("stack")
+    if st is not None and not (isinstance(st, list) and all(isinstance(x, str) for x in st)):
+        E("stack must be a list of strings (detected CMS, plugins, analytics)")
     gl = a.get("glossary") or {}
     for k, val in gl.items():
         if not val.get("g") or not val.get("d"):
@@ -231,6 +239,10 @@ def validate_suite(s):
             E(f"{p} needs event (the GA4 event name expected)")
         if c.get("type") in ("text", "no_text") and not (c.get("text") or c.get("pattern")):
             E(f"{p} needs text or pattern")
+        if c.get("type") == "tag_present" and not c.get("ids"):
+            E(f"{p} needs ids (e.g. [\"GTM-XXXX\"])")
+        if c.get("type") == "robots_disallow" and not (c.get("agent") and (c.get("disallowed") or c.get("allowed"))):
+            E(f"{p} needs agent and disallowed/allowed paths")
         if c.get("type") == "redirect" and not (c.get("from") and c.get("to")):
             E(f"{p} needs from and to")
     if not s.get("checks"):

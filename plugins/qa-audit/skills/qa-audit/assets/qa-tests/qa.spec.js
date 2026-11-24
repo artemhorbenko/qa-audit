@@ -1,6 +1,8 @@
 // qa-audit: deterministic post-deploy checks, driven by qa-suite.json.
 // Never submits forms, payments or messages: form checks read fields and
-// fire a synthetic "sent" DOM event to see whether analytics reacts.
+// fire a synthetic "sent" event to see whether analytics reacts.
+// Analytics and ad pixels are intercepted and aborted in every check, so no
+// synthetic event ever reaches production GA4, Ads, Meta or LinkedIn.
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
@@ -29,7 +31,18 @@ const SPY = () => {
   addEventListener('click', e => { if (e.target.closest && e.target.closest('a[href^="tel:"],a[href^="mailto:"]')) e.preventDefault(); }, true);
 };
 
+const ANALYTICS = /google-analytics\.com|analytics\.google\.com|\/g\/collect|googleadservices\.com|doubleclick\.net|\/ccm\/collect|facebook\.com\/tr|px\.ads\.linkedin\.com|bat\.bing\.com|hs-analytics|track\.hubspot/;
+
+// Abort analytics/ad hits but remember their URLs (the 'request' event still fires).
+async function guard(page) {
+  if (page.__qaGuarded) return;
+  page.__qaGuarded = true;
+  page.__qaHits = [];
+  await page.route(ANALYTICS, r => { page.__qaHits.push(r.request().url()); return r.abort(); });
+}
+
 async function open(page, url) {
+  await guard(page);
   await sleep(DELAY);
   const resp = await page.goto(url, { waitUntil: 'load', timeout: 45000 });
   const status = resp ? resp.status() : 0;
@@ -64,19 +77,17 @@ const RUN = {
     expect(got.pathname, `${c.from} should end at ${c.to}`).toBe(want.pathname);
   },
 
+  // A page_view hit is generated and aborted (never reaches GA4). Sites with consent
+  // mode "basic" send nothing before consent: use tag_present there instead.
   async ga4_tag(page, c) {
-    const hits = [];
-    page.on('request', r => { if (/google-analytics\.com\/g\/collect|\/g\/collect\?/.test(r.url())) hits.push(r.url()); });
     await open(page, c.url);
     await page.waitForTimeout(2500);
     const tag = await page.evaluate(id => [...document.scripts].some(s => (s.src || '').includes(id) || s.textContent.includes(id)), c.measurementId);
     expect(tag, `gtag with ${c.measurementId} on the page`).toBeTruthy();
-    expect(hits.some(u => u.includes(`tid=${c.measurementId}`)), `a GA4 hit with tid=${c.measurementId}`).toBeTruthy();
+    expect(page.__qaHits.some(u => u.includes(`tid=${c.measurementId}`)), `a GA4 hit with tid=${c.measurementId}`).toBeTruthy();
   },
 
   async click_event(page, c) {
-    const hits = [];
-    page.on('request', r => { if (/\/g\/collect/.test(r.url())) hits.push(r.url()); });
     await page.addInitScript(SPY);
     await open(page, c.url);
     const el = page.locator(c.selector).filter({ visible: true }).first();
@@ -84,25 +95,65 @@ const RUN = {
     await el.scrollIntoViewIfNeeded();
     await el.click({ noWaitAfter: true });
     await page.waitForTimeout(2500);
-    const seen = eventsSeen(await page.evaluate(() => window.__qa.pushes.map(x => JSON.parse(JSON.stringify(x)))), hits);
+    const seen = eventsSeen(await page.evaluate(() => window.__qa.pushes.map(x => JSON.parse(JSON.stringify(x)))), page.__qaHits);
     expect([...seen], `GA4 event "${c.event}" after clicking ${c.selector}`).toContain(c.event);
   },
 
+  // Synthetic "sent" signal, never a submit. domEvent: a DOM CustomEvent on the form
+  // (CF7: wpcf7mailsent). jqueryEvent + jqueryArgs: a jQuery event on document
+  // (Gravity Forms: gform_confirmation_loaded with [formId]).
   async form_event(page, c) {
-    const hits = [];
-    page.on('request', r => { if (/\/g\/collect/.test(r.url())) hits.push(r.url()); });
     await page.addInitScript(SPY);
     await open(page, c.url);
-    const ok = await page.evaluate(({ form, domEvent }) => {
+    const ok = await page.evaluate(({ form, domEvent, jq, args }) => {
       const f = document.querySelector(form);
       if (!f) return false;
-      f.dispatchEvent(new CustomEvent(domEvent, { bubbles: true, detail: { status: 'mail_sent', qaSynthetic: true } }));
+      if (jq) { if (!window.jQuery) return 'no-jquery'; window.jQuery(document).trigger(jq, args || []); }
+      else f.dispatchEvent(new CustomEvent(domEvent, { bubbles: true, detail: { status: 'mail_sent', qaSynthetic: true } }));
       return true;
-    }, { form: c.form, domEvent: c.domEvent || 'wpcf7mailsent' });
-    expect(ok, `form ${c.form} exists`).toBeTruthy();
+    }, { form: c.form, domEvent: c.domEvent || 'wpcf7mailsent', jq: c.jqueryEvent, args: c.jqueryArgs });
+    expect(ok, `form ${c.form} exists (and jQuery, if needed)`).toBe(true);
     await page.waitForTimeout(2500);
-    const seen = eventsSeen(await page.evaluate(() => window.__qa.pushes.map(x => JSON.parse(JSON.stringify(x)))), hits);
-    expect([...seen], `GA4 event "${c.event}" after ${c.domEvent || 'wpcf7mailsent'} (no real submit)`).toContain(c.event);
+    const seen = eventsSeen(await page.evaluate(() => window.__qa.pushes.map(x => JSON.parse(JSON.stringify(x)))), page.__qaHits);
+    expect([...seen], `event "${c.event}" after ${c.jqueryEvent || c.domEvent || 'wpcf7mailsent'} (no real submit, hits aborted)`).toContain(c.event);
+  },
+
+  async tag_present(page, c) {
+    await open(page, c.url);
+    await page.waitForTimeout(1500);
+    for (const id of c.ids) {
+      const found = await page.evaluate(id => [...document.scripts].some(s => (s.src || '').includes(id) || s.textContent.includes(id)) ||
+        performance.getEntriesByType('resource').some(r => r.name.includes(id)), id);
+      expect(found, `${id} on ${c.url}`).toBeTruthy();
+    }
+  },
+
+  // robots.txt as Google reads it (RFC 9309): the most specific user-agent group
+  // wins on its own; inside it the longest matching rule wins, Allow on a tie.
+  async robots_disallow(page, c, request) {
+    await sleep(DELAY);
+    const txt = await (await request.get(new URL(c.url || '/robots.txt', suite.baseURL).href)).text();
+    const groups = []; let cur = null, lastUA = false;
+    for (const raw of txt.split(/\r?\n/)) {
+      const line = raw.replace(/#.*/, '').trim(); if (!line) continue;
+      const m = line.match(/^([A-Za-z-]+)\s*:\s*(.*)$/); if (!m) continue;
+      const k = m[1].toLowerCase(), v = m[2].trim();
+      if (k === 'user-agent') { if (!lastUA) { cur = { agents: [], rules: [] }; groups.push(cur); } cur.agents.push(v.toLowerCase()); lastUA = true; }
+      else { lastUA = false; if (cur && (k === 'allow' || k === 'disallow')) cur.rules.push({ allow: k === 'allow', path: v }); }
+    }
+    const ua = c.agent.toLowerCase();
+    let g = groups.filter(x => x.agents.some(a => a !== '*' && ua.startsWith(a)));
+    if (!g.length) g = groups.filter(x => x.agents.includes('*'));
+    const rules = g.flatMap(x => x.rules).filter(r => r.path);
+    const rx = p => new RegExp('^' + p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\\\$$/, '$'));
+    const blocked = path => {
+      let best = null;
+      for (const r of rules) if (rx(r.path).test(path) && (!best || r.path.length > best.path.length || (r.path.length === best.path.length && r.allow))) best = r;
+      return best ? !best.allow : false;
+    };
+    const wrong = (c.disallowed || []).filter(p => !blocked(p)).map(p => `${p} is crawlable by ${c.agent}`)
+      .concat((c.allowed || []).filter(p => blocked(p)).map(p => `${p} is blocked for ${c.agent}`));
+    expect(wrong, `robots.txt rules for ${c.agent}`).toEqual([]);
   },
 
   async form_fields(page, c) {

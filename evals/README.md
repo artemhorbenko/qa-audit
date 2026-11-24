@@ -9,7 +9,7 @@
 cd evals/runner-fixture/site && python3 -m http.server 8765 &
 cp -r ../../plugins/qa-audit/skills/qa-audit/assets/qa-tests /tmp/qt && cp ../qa-suite.json /tmp/qt/
 cd /tmp/qt && npm i && npx playwright install chromium && npx playwright test --retries=0
-# expected: F03, F06x, F11, F12 fail; everything else passes
+# expected: F03, F06x, F11, F12, F15 fail; everything else passes
 ```
 
 Every report must also pass:

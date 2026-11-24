@@ -237,7 +237,12 @@
    "ev": "obs",
    "I": 9,
    "C": 9,
-   "E": 8
+   "E": 8,
+   "where": {
+    "url": "https://harbourline.example/#quote",
+    "selector": ".wpcf7 form",
+    "file": "theme/assets/css/forms.css"
+   }
   },
   {
    "t": "Form success event no longer sends generate_lead to GA4",
@@ -248,7 +253,12 @@
    "ev": "obs",
    "I": 8,
    "C": 9,
-   "E": 8
+   "E": 8,
+   "where": {
+    "url": "https://harbourline.example/",
+    "plugin": "WPCode snippet \"lead-event\"",
+    "selector": ".wpcf7"
+   }
   },
   {
    "t": "14 URLs from the old theme return 404 (no redirects)",
@@ -259,7 +269,11 @@
    "ev": "obs",
    "I": 8,
    "C": 9,
-   "E": 7
+   "E": 7,
+   "where": {
+    "plugin": "Redirection",
+    "url": "https://harbourline.example/services/sea/"
+   }
   },
   {
    "t": "\"Customs brokerage\" card shows the refrigerated-cargo text",
@@ -270,7 +284,11 @@
    "ev": "obs",
    "I": 5,
    "C": 10,
-   "E": 10
+   "E": 10,
+   "where": {
+    "url": "https://harbourline.example/",
+    "selector": ".card:has(b:contains('Customs brokerage')) span"
+   }
   },
   {
    "t": "GA4 tag missing on the /tracking/ page template",
@@ -281,7 +299,11 @@
    "ev": "obs",
    "I": 6,
    "C": 9,
-   "E": 8
+   "E": 8,
+   "where": {
+    "url": "https://harbourline.example/tracking/",
+    "template": "page-tracking.php / header-tracking.php"
+   }
   },
   {
    "t": "Mobile LCP 4.8 s: hero image is lazy-loaded",
@@ -292,7 +314,12 @@
    "ev": "obs",
    "I": 6,
    "C": 8,
-   "E": 7
+   "E": 7,
+   "where": {
+    "url": "https://harbourline.example/",
+    "selector": ".hero img",
+    "file": "theme/template-parts/hero.php"
+   }
   },
   {
    "t": "Quote button on /de/ still reads \"Get a quote\"",
@@ -303,7 +330,12 @@
    "ev": "obs",
    "I": 4,
    "C": 10,
-   "E": 9
+   "E": 9,
+   "where": {
+    "url": "https://harbourline.example/de/",
+    "plugin": "Polylang → Strings translations",
+    "setting": "\"Get a quote\""
+   }
   },
   {
    "t": "TypeError in slider.js on /about/",
@@ -314,7 +346,11 @@
    "ev": "obs",
    "I": 3,
    "C": 9,
-   "E": 8
+   "E": 8,
+   "where": {
+    "url": "https://harbourline.example/about/",
+    "file": "theme/assets/js/slider.js:14"
+   }
   },
   {
    "t": "Amber CTA text fails contrast (1.9:1)",
@@ -325,7 +361,11 @@
    "ev": "obs",
    "I": 4,
    "C": 9,
-   "E": 9
+   "E": 9,
+   "where": {
+    "selector": ".cta, .hero .button",
+    "file": "theme/assets/css/buttons.css"
+   }
   },
   {
    "t": "Sticky header may hide the #quote heading in Safari",
@@ -336,7 +376,11 @@
    "ev": "hyp",
    "I": 2,
    "C": 5,
-   "E": 8
+   "E": 8,
+   "where": {
+    "selector": "html",
+    "file": "theme/assets/css/base.css"
+   }
   },
   {
    "t": "Nobody runs post-deploy checks; this release went live untested",
@@ -347,7 +391,11 @@
    "ev": "obs",
    "I": 7,
    "C": 7,
-   "E": 7
+   "E": 7,
+   "where": {
+    "tool": "CI / deploy hook",
+    "file": "qa-tests/"
+   }
   }
  ],
  "plans": {
@@ -401,7 +449,10 @@
     "A separate mobile form: rejected, because two forms to maintain would drift apart again."
    ],
    "thr": "T06 passes at 390 and 820 px, and no field needs a sideways scroll.",
-   "pm": "It failed because the cache plugin kept serving the old CSS file. Purge the cache and bump the theme version in the same deploy."
+   "pm": "It failed because the cache plugin kept serving the old CSS file. Purge the cache and bump the theme version in the same deploy.",
+   "owner": "code",
+   "code": ".wpcf7 form {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));\n  gap: 10px;\n}\n.wpcf7 input, .wpcf7 select, .wpcf7 textarea {\n  width: 100%;\n  font-size: 16px; /* stops iOS zoom */\n}",
+   "codeLang": "css"
   },
   "2": {
    "steps": [
@@ -435,7 +486,10 @@
     "Move all tracking to GTM: later, as a bigger change than this hotfix."
    ],
    "thr": "T04 passes and DebugView shows generate_lead for the test lead.",
-   "pm": "It failed because the snippet only loads on the homepage while the form also sits on /contact/. Load it site-wide and add T04b for /contact/."
+   "pm": "It failed because the snippet only loads on the homepage while the form also sits on /contact/. Load it site-wide and add T04b for /contact/.",
+   "owner": "code",
+   "code": "// site-wide, not tied to a theme class\ndocument.addEventListener('wpcf7mailsent', function (e) {\n  gtag('event', 'generate_lead', { form_id: e.detail.contactFormId });\n});",
+   "codeLang": "js"
   },
   "3": {
    "steps": [
@@ -464,7 +518,10 @@
     "Server-level rules: possible, but the team edits redirects in WordPress."
    ],
    "thr": "T09-T09c pass, and Search Console's 404 count for /services/* falls to 0 within a week.",
-   "pm": "It failed because the cache served old 404s. Purge the cache after adding the rules."
+   "pm": "It failed because the cache served old 404s. Purge the cache after adding the rules.",
+   "owner": "admin",
+   "code": "/services/sea/   -> /sea-freight/   301\n/services/road/  -> /road-freight/  301\n/services/air/   -> /air-freight/   301\n# ... 11 more rows from the old sitemap",
+   "codeLang": "text"
   },
   "4": {
    "steps": [
@@ -487,7 +544,8 @@
    ],
    "test": "T07",
    "effort": "≈10 minutes",
-   "risk": "None."
+   "risk": "None.",
+   "owner": "decision"
   },
   "5": {
    "steps": [
@@ -509,7 +567,10 @@
    ],
    "test": "T03b",
    "effort": "≈20 minutes",
-   "risk": "None."
+   "risk": "None.",
+   "owner": "code",
+   "code": "<?php wp_head(); ?> <!-- missing in header-tracking.php -->",
+   "codeLang": "php"
   },
   "6": {
    "steps": [
@@ -531,7 +592,10 @@
    ],
    "test": "",
    "effort": "≈1 hour",
-   "risk": "Lab numbers vary: compare medians."
+   "risk": "Lab numbers vary: compare medians.",
+   "owner": "code",
+   "code": "<img src=\"hero.webp\" srcset=\"hero-800.webp 800w, hero-1600.webp 1600w\" sizes=\"100vw\"\n     width=\"1600\" height=\"900\" fetchpriority=\"high\" alt=\"\">",
+   "codeLang": "html"
   },
   "7": {
    "steps": [
@@ -553,7 +617,8 @@
    ],
    "test": "T08",
    "effort": "≈10 minutes",
-   "risk": "None."
+   "risk": "None.",
+   "owner": "admin"
   },
   "8": {
    "steps": [
@@ -574,7 +639,10 @@
    ],
    "test": "T10",
    "effort": "≈15 minutes",
-   "risk": "None."
+   "risk": "None.",
+   "owner": "code",
+   "code": "const el = document.querySelector('.slider');\nif (el) el.addEventListener('click', onSlide);",
+   "codeLang": "js"
   },
   "9": {
    "steps": [
@@ -595,7 +663,10 @@
    ],
    "test": "T12",
    "effort": "≈10 minutes",
-   "risk": "Brand look: show the option to the owner."
+   "risk": "Brand look: show the option to the owner.",
+   "owner": "code",
+   "code": ".cta, .hero .button { color: #1d2433; } /* 8.9:1 on #ffb648 */",
+   "codeLang": "css"
   },
   "10": {
    "steps": [
@@ -616,7 +687,10 @@
    ],
    "test": "",
    "effort": "≈5 minutes",
-   "risk": "None."
+   "risk": "None.",
+   "owner": "code",
+   "code": "html { scroll-padding-top: 72px; }",
+   "codeLang": "css"
   },
   "11": {
    "steps": [
@@ -638,7 +712,10 @@
    ],
    "test": "T01",
    "effort": "≈1 hour to set up",
-   "risk": "Tests that cry wolf get ignored: keep the suite short and fix flaky checks at once."
+   "risk": "Tests that cry wolf get ignored: keep the suite short and fix flaky checks at once.",
+   "owner": "code",
+   "code": "# .github/workflows/qa.yml (after deploy)\n- run: cd qa-tests && npm ci && npx playwright install --with-deps chromium && npx playwright test",
+   "codeLang": "yaml"
   }
  },
  "checklist": [
@@ -1013,5 +1090,13 @@
    "g": "language versions for Google",
    "d": "Tags that tell search engines which page is in which language."
   }
- }
+ },
+ "stack": [
+  "WordPress",
+  "Contact Form 7",
+  "Redirection",
+  "Polylang",
+  "WPCode",
+  "GA4 via gtag.js"
+ ]
 }
